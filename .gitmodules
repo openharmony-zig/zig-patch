@@ -1,0 +1,3 @@
+[submodule "zig-bootstrap"]
+	path = zig-bootstrap
+	url = https://github.com/ziglang/zig-bootstrap.git
