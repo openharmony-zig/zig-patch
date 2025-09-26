@@ -28,13 +28,6 @@ jobs:
         echo "LLVM_DIR=$(brew --prefix llvm)" >> $GITHUB_ENV
         echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
         
-    - name: Verify installations
-      run: |
-        # 验证安装的版本
-        cmake --version
-        llvm-config --version
-        ld64.lld --version || lld --version
-        
     - name: Apply patches to zig-bootstrap
       run: |
         # 检查是否存在 patch 文件目录
