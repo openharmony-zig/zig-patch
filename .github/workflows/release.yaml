@@ -1,0 +1,150 @@
+name: Build Zig for OpenHarmony
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送 tag 时触发
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: macos-14  # ARM-based macOS runner
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive  # 递归检出子模块
+        
+    - name: Install dependencies
+      run: |
+        # 更新 Homebrew
+        brew update
+        
+        # 安装最新版本的依赖
+        brew install llvm cmake
+        
+        # 确保 lld 可用 (LLVM 包含 lld)
+        echo "LLVM_DIR=$(brew --prefix llvm)" >> $GITHUB_ENV
+        echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+        
+    - name: Verify installations
+      run: |
+        # 验证安装的版本
+        cmake --version
+        llvm-config --version
+        ld64.lld --version || lld --version
+        
+    - name: Apply patches to zig-bootstrap
+      run: |
+        # 检查是否存在 patch 文件目录
+        if [ -d "patch" ]; then
+          echo "Applying patches to zig-bootstrap submodule..."
+          cd zig-bootstrap
+          
+          # 应用所有 patch 文件
+          for patch in ../patch/*.patch; do
+            if [ -f "$p" ]; then
+              echo "Applying patch: $p"
+              git apply "$p" || {
+                echo "Failed to apply patch: $p"
+                exit 1
+              }
+            fi
+          done
+          
+          cd ..
+        else
+          echo "No patches directory found, skipping patch application"
+        fi
+        
+    - name: Build Zig
+      run: |
+        cd zig-bootstrap
+        
+        # 设置环境变量
+        export PATH="$LLVM_DIR/bin:$PATH"
+        
+        # 执行构建命令
+        echo "Starting build process..."
+        ./build aarch64-macos-none baseline
+        
+    - name: Verify build output
+      run: |
+        # 检查构建输出
+        ls -la zig-bootstrap/out/
+        if [ -d "zig-bootstrap/out/zig-aarch64-macos-none-baseline" ]; then
+          echo "Build successful!"
+          ls -la zig-bootstrap/out/zig-aarch64-macos-none-baseline/
+        else
+          echo "Build failed - output directory not found"
+          exit 1
+        fi
+        
+    - name: Create release archive
+      run: |
+        cd zig-bootstrap/out
+        
+        # 创建压缩包
+        tar -czf zig-aarch64-macos-none-baseline.tar.gz zig-aarch64-macos-none-baseline/
+        
+        # 验证压缩包
+        ls -lh zig-aarch64-macos-none-baseline.tar.gz
+        
+        # 移动到工作目录根目录
+        mv zig-aarch64-macos-none-baseline.tar.gz ../../
+        
+    - name: Get tag name
+      id: get_tag
+      run: |
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        else
+          echo "tag_name=dev-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_tag.outputs.tag_name }}
+        release_name: Zig OpenHarmony Build ${{ steps.get_tag.outputs.tag_name }}
+        body: |
+          ## Zig OpenHarmony Build
+          
+          This release contains a Zig compiler built specifically for OpenHarmony development.
+          
+          ### Build Information
+          - Target: aarch64-macos-none-baseline
+          - Built on: ARM macOS
+          - Date: ${{ github.event.head_commit.timestamp }}
+          - Commit: ${{ github.sha }}
+          
+          ### Usage
+          1. Download the `zig-aarch64-macos-none-baseline.tar.gz` file
+          2. Extract it: `tar -xzf zig-aarch64-macos-none-baseline.tar.gz`
+          3. Add the `bin` directory to your PATH
+          
+          ### Changes
+          ${{ github.event.head_commit.message }}
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./zig-aarch64-macos-none-baseline.tar.gz
+        asset_name: zig-aarch64-macos-none-baseline.tar.gz
+        asset_content_type: application/gzip
+        
+    - name: Upload build artifacts (backup)
+      uses: actions/upload-artifact@v4
+      with:
+        name: zig-aarch64-macos-none-baseline
+        path: zig-aarch64-macos-none-baseline.tar.gz
+        retention-days: 30
