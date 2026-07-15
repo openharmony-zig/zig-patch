@@ -145,10 +145,10 @@ index 0000000000000000000000000000000000000000..fdd9d408ea8b87de7915aab10e06e537
 +    && rm -rf /var/lib/apt/lists/*
 diff --git a/ohos/README.md b/ohos/README.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..fd319769cf5438f59a3fa39b092aa94a5e56eda3
+index 0000000000000000000000000000000000000000..998bbb0950b4bc7085ca8f5425bdd5472823ec3d
 --- /dev/null
 +++ b/ohos/README.md
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,240 @@
 +# Zig OpenHarmony 维护与发布
 +
 +本目录把仓库中的 OHOS 适配定义成一套可复现的源码维护、构建、打包和
@@ -184,7 +184,8 @@ index 0000000000000000000000000000000000000000..fd319769cf5438f59a3fa39b092aa94a
 +
 +矩阵脚本从 `manifest.json` 读取 target、CPU 和可执行文件名，逐个调用官方
 +`zig-bootstrap` 的顶层 `build`，检查目标文件格式，并在 `dist/` 生成带
-+SHA-256 的 `.tar.xz` 包。`armv7a` 原生编译器明确使用 `generic+v7a`，不会
++SHA-256 的 `zig-<target>-<cpu>.tar.xz` 包；归档文件名与归档内顶层目录严格
++一致。`armv7a` 原生编译器明确使用 `generic+v7a`，不会
 +退化成含义模糊的 ARM baseline。
 +
 +矩阵脚本会在首个目标成功后自动为本次调用的后续目标复用 `out/host`。
@@ -595,10 +596,10 @@ index 0000000000000000000000000000000000000000..dc490a0143f799a2d8fbf8054cfd5039
 ++}
 diff --git a/ohos/source-paths.txt b/ohos/source-paths.txt
 new file mode 100644
-index 0000000000000000000000000000000000000000..151cbfe10aa025c18a2a2cc7e84b7d67827a4e1a
+index 0000000000000000000000000000000000000000..ca96babfa1f8b6ebf7209fbd96e23b51a13695e7
 --- /dev/null
 +++ b/ohos/source-paths.txt
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,38 @@
 +# Paths that form the reusable Zig/OpenHarmony source change.
 +# scripts/ohos/export-patch.sh passes this file to git pathspec handling.
 +.gitignore
@@ -610,10 +611,8 @@ index 0000000000000000000000000000000000000000..151cbfe10aa025c18a2a2cc7e84b7d67
 +zig/lib/compiler/aro/aro/Toolchain.zig
 +zig/lib/compiler_rt.zig
 +zig/lib/compiler_rt/arm.zig
-+zig/lib/libc/include/aarch64-linux-ohos
 +zig/lib/libc/include/arm-linux-ohoseabi
 +zig/lib/libc/include/generic-ohos
-+zig/lib/libc/include/x86_64-linux-ohos
 +zig/lib/libc/ohos
 +zig/lib/libc/musl/src/internal/stdio_impl.h
 +zig/lib/std/Io/Threaded.zig
@@ -641,7 +640,7 @@ index 0000000000000000000000000000000000000000..151cbfe10aa025c18a2a2cc7e84b7d67
 +scripts/ohos
 diff --git a/scripts/ohos/build-matrix.sh b/scripts/ohos/build-matrix.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..5fae3613bf67cce69204a75f4f7077fe75848cae
+index 0000000000000000000000000000000000000000..ec2140b788c9f8c77cc50abd2d11b2d8939053fd
 --- /dev/null
 +++ b/scripts/ohos/build-matrix.sh
 @@ -0,0 +1,197 @@
@@ -739,7 +738,7 @@ index 0000000000000000000000000000000000000000..5fae3613bf67cce69204a75f4f7077fe
 +  local target="$3"
 +  local cpu="$4"
 +  local prefix="$5"
-+  local package_name="zig-ohos-0.16.0-${kind}-${name}"
++  local package_name="zig-${target}-${cpu}"
 +  local archive="${OUTPUT_DIR}/${package_name}.tar.xz"
 +  local build_info="${prefix}/BUILD-INFO.txt"
 +
@@ -748,7 +747,7 @@ index 0000000000000000000000000000000000000000..5fae3613bf67cce69204a75f4f7077fe
 +  printf '%s\n' \
 +    "zig_version=0.16.0" \
 +    "package_kind=${kind}" \
-+    "package_name=${name}" \
++    "package_name=${package_name}" \
 +    "target=${target}" \
 +    "cpu=${cpu}" \
 +    "bootstrap_base=$(jq -r '.zig.bootstrap_base_commit' "${MANIFEST}")" \
@@ -844,7 +843,7 @@ index 0000000000000000000000000000000000000000..5fae3613bf67cce69204a75f4f7077fe
 +cat "${RESULTS}"
 diff --git a/scripts/ohos/build-package.sh b/scripts/ohos/build-package.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..c5ca92dfe029d615964116e4f2df6f510168fbb1
+index 0000000000000000000000000000000000000000..d48015a2b0ac9360d31b6f9dd9775ebff90931a2
 --- /dev/null
 +++ b/scripts/ohos/build-package.sh
 @@ -0,0 +1,129 @@
@@ -940,7 +939,7 @@ index 0000000000000000000000000000000000000000..c5ca92dfe029d615964116e4f2df6f51
 +"${ROOT}/scripts/ohos/check-source.sh" --zig "${ZIG_BIN}"
 +
 +mkdir -p "${OUTPUT_DIR}" "${ROOT}/out/ohos-package-stage"
-+PACKAGE_NAME="zig-ohos-${VERSION}-${TARGET}-${CPU}"
++PACKAGE_NAME="zig-${TARGET}-${CPU}"
 +STAGE_ROOT="${ROOT}/out/ohos-package-stage"
 +PACKAGE_DIR="${STAGE_ROOT}/${PACKAGE_NAME}"
 +rm -rf "${PACKAGE_DIR}"

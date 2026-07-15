@@ -41,6 +41,8 @@ cd zig-patch
 scripts/apply-ohos-patch.sh
 
 # 构建、检查并打包上述七个目标；包和 SHA-256 位于 zig-bootstrap/dist/。
+# 归档统一命名为 zig-<target>-<cpu>.tar.xz，例如：
+# zig-aarch64-macos-none-baseline.tar.xz
 scripts/build-matrix.sh
 ```
 
