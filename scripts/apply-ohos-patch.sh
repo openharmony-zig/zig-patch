@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BOOTSTRAP="${ROOT}/zig-bootstrap"
-BASE="7e0d1b35dffd18ba7a45c8710ca6fee516641474"
-PATCH="${ROOT}/patch/zig-ohos-0.16.x.patch"
+BASE="8a7dffbf56cdbcea8a19f10dc48f4ad1ea376252"
+PATCH="${ROOT}/patch/zig-ohos-0.17.x.patch"
 
 if ! git -C "${BOOTSTRAP}" rev-parse --git-dir >/dev/null 2>&1; then
   git -C "${ROOT}" submodule update --init zig-bootstrap

@@ -1,4 +1,4 @@
 [submodule "zig-bootstrap"]
 	path = zig-bootstrap
 	url = https://codeberg.org/ziglang/zig-bootstrap.git
-	branch = 0.16.x
+	branch = master

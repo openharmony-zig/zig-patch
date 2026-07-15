@@ -1,12 +1,12 @@
-# Zig 0.16.x OpenHarmony 构建与验证
+# Zig 0.17.x OpenHarmony 构建与验证
 
 本仓库把 Zig/OpenHarmony 适配整理成可重放的源码 patch、完整构建矩阵和
 三架构 QEMU 运行测试。基线固定为官方
 [`ziglang/zig-bootstrap`](https://codeberg.org/ziglang/zig-bootstrap.git)
-的 `0.16.x` 分支提交：
+的 `master` 分支 0.17 开发版提交：
 
 ```text
-7e0d1b35dffd18ba7a45c8710ca6fee516641474
+8a7dffbf56cdbcea8a19f10dc48f4ad1ea376252
 ```
 
 ## 产物矩阵
@@ -37,7 +37,7 @@ OHOS 原生 Zig：
 git clone --recurse-submodules <本仓库地址>
 cd zig-patch
 
-# 严格检查 0.16.x 基线并应用完整 OHOS patch。
+# 严格检查固定的 0.17 开发版基线并应用完整 OHOS patch。
 scripts/apply-ohos-patch.sh
 
 # 构建、检查并打包上述七个目标；包和 SHA-256 位于 zig-bootstrap/dist/。
@@ -153,7 +153,7 @@ QEMU 镜像再重试。可用 `--qemu-attempts 1` 关闭重试。
 
 ## Patch 维护
 
-可复用 patch 是 [`patch/zig-ohos-0.16.x.patch`](patch/zig-ohos-0.16.x.patch)，
+可复用 patch 是 [`patch/zig-ohos-0.17.x.patch`](patch/zig-ohos-0.17.x.patch)，
 只保证应用于上面固定的官方基线。修改子模块中的适配后执行：
 
 ```sh

@@ -1,4 +1,4 @@
-name: Build Zig 0.16.x for OpenHarmony
+name: Build Zig 0.17.x for OpenHarmony
 
 on:
   push:

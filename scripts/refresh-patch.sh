@@ -8,9 +8,9 @@ TMPDIR="${OHOS_TMPDIR:-${ROOT}/zig-bootstrap/out/tmp}"
 mkdir -p "${TMPDIR}"
 export TMPDIR
 BOOTSTRAP="${ROOT}/zig-bootstrap"
-BASE="7e0d1b35dffd18ba7a45c8710ca6fee516641474"
+BASE="8a7dffbf56cdbcea8a19f10dc48f4ad1ea376252"
 PATHS_FILE="${BOOTSTRAP}/ohos/source-paths.txt"
-OUTPUT="${ROOT}/patch/zig-ohos-0.16.x.patch"
+OUTPUT="${ROOT}/patch/zig-ohos-0.17.x.patch"
 TEMP_INDEX="$(mktemp "${TMPDIR:-/tmp}/zig-ohos-index.XXXXXX")"
 trap 'rm -f "${TEMP_INDEX}"' EXIT
 
