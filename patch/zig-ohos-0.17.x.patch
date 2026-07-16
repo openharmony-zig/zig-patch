@@ -1841,7 +1841,7 @@ index 0000000000000000000000000000000000000000..b36703942d341203493f1aaa417aff61
 +printf 'OHOS runtime kit ready: %s\n' "${OUTPUT}"
 diff --git a/scripts/ohos/test-host-matrix.sh b/scripts/ohos/test-host-matrix.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..106716c204113c43f3c9338bbb3696d45c5a8546
+index 0000000000000000000000000000000000000000..27b136563a5994ea01033a1dd4c20808f10a6be8
 --- /dev/null
 +++ b/scripts/ohos/test-host-matrix.sh
 @@ -0,0 +1,318 @@
@@ -1958,16 +1958,9 @@ index 0000000000000000000000000000000000000000..106716c204113c43f3c9338bbb3696d4
 +  local platform="$5"
 +  local home="${host_work}/container-home"
 +  local arch
-+  local -a args wine_env
++  local -a args
 +  mkdir -p "${home}"
 +  for arch in arm64 armv7a x86_64; do
-+    wine_env=()
-+    if [[ "${runner}" == *wine-path-runner.sh ]]; then
-+      wine_env=(
-+        -e OHOS_WINE_BIN=/opt/wine-stable/bin/wine
-+        -e ZIG_WINE_FILE_LOCK_WORKAROUND=1
-+      )
-+    fi
 +    args=(
 +      run --rm --platform "${platform}"
 +      --user "$(id -u):$(id -g)"
@@ -1975,7 +1968,14 @@ index 0000000000000000000000000000000000000000..106716c204113c43f3c9338bbb3696d4
 +      -e WINEARCH=win64
 +      -e WINEDEBUG=-all
 +      -e "WINEPREFIX=${host_work}/wine-prefix"
-+      "${wine_env[@]}"
++    )
++    if [[ "${runner}" == *wine-path-runner.sh ]]; then
++      args+=(
++        -e OHOS_WINE_BIN=/opt/wine-stable/bin/wine
++        -e ZIG_WINE_FILE_LOCK_WORKAROUND=1
++      )
++    fi
++    args+=(
 +      -v "${ROOT}:${ROOT}"
 +      -v "${WORK}:${WORK}"
 +      -w "${ROOT}"
@@ -28558,7 +28558,7 @@ index 0000000000000000000000000000000000000000..af46bd13fcec706049ddaf094bf5c5ce
 \ No newline at end of file
 diff --git a/zig/lib/libc/ohos/include/fortify/fortify.h b/zig/lib/libc/ohos/include/fortify/fortify.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..f1b72ac00e03a1df6c7a14482d586cea2adcb868
+index 0000000000000000000000000000000000000000..1d4248a575f1667a86e37d2a269faeffc4293252
 --- /dev/null
 +++ b/zig/lib/libc/ohos/include/fortify/fortify.h
 @@ -0,0 +1,143 @@
@@ -28640,7 +28640,7 @@ index 0000000000000000000000000000000000000000..f1b72ac00e03a1df6c7a14482d586cea
 +
 +#define __DIAGNOSE_BOS0(s) __DIAGNOSE_BOSN((s), 0)
 +#define __DIAGNOSE_PASS_OBJECT_SIZE_N(n) __attribute__((pass_object_size(n)))
-+#define __DIAGNOSE__SIZE_MUL_OVERFLOW(a, b, result) __builtin_umull_overflow(a, b, result)
++#define __DIAGNOSE__SIZE_MUL_OVERFLOW(a, b, result) __builtin_mul_overflow(a, b, result)
 +#define __DIAGNOSE_PRINTFLIKE(x, y) __attribute__((__format__(printf, x, y)))
 +#define __DIAGNOSE_CALL_BYPASSING_FORTIFY(fn) (&(fn))
 +#define __DIAGNOSE_FORTIFY_INLINE static __inline__ __attribute__((no_stack_protector)) \
@@ -28705,7 +28705,6 @@ index 0000000000000000000000000000000000000000..f1b72ac00e03a1df6c7a14482d586cea
 +#endif
 +
 +#endif
-\ No newline at end of file
 diff --git a/zig/lib/libc/ohos/include/fortify/linux/fcntl.h b/zig/lib/libc/ohos/include/fortify/linux/fcntl.h
 new file mode 100644
 index 0000000000000000000000000000000000000000..af46bd13fcec706049ddaf094bf5c5cea6804f8e
@@ -28844,7 +28843,7 @@ index 0000000000000000000000000000000000000000..af46bd13fcec706049ddaf094bf5c5ce
 \ No newline at end of file
 diff --git a/zig/lib/libc/ohos/include/fortify/linux/fortify.h b/zig/lib/libc/ohos/include/fortify/linux/fortify.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..f1b72ac00e03a1df6c7a14482d586cea2adcb868
+index 0000000000000000000000000000000000000000..1d4248a575f1667a86e37d2a269faeffc4293252
 --- /dev/null
 +++ b/zig/lib/libc/ohos/include/fortify/linux/fortify.h
 @@ -0,0 +1,143 @@
@@ -28926,7 +28925,7 @@ index 0000000000000000000000000000000000000000..f1b72ac00e03a1df6c7a14482d586cea
 +
 +#define __DIAGNOSE_BOS0(s) __DIAGNOSE_BOSN((s), 0)
 +#define __DIAGNOSE_PASS_OBJECT_SIZE_N(n) __attribute__((pass_object_size(n)))
-+#define __DIAGNOSE__SIZE_MUL_OVERFLOW(a, b, result) __builtin_umull_overflow(a, b, result)
++#define __DIAGNOSE__SIZE_MUL_OVERFLOW(a, b, result) __builtin_mul_overflow(a, b, result)
 +#define __DIAGNOSE_PRINTFLIKE(x, y) __attribute__((__format__(printf, x, y)))
 +#define __DIAGNOSE_CALL_BYPASSING_FORTIFY(fn) (&(fn))
 +#define __DIAGNOSE_FORTIFY_INLINE static __inline__ __attribute__((no_stack_protector)) \
@@ -28991,7 +28990,6 @@ index 0000000000000000000000000000000000000000..f1b72ac00e03a1df6c7a14482d586cea
 +#endif
 +
 +#endif
-\ No newline at end of file
 diff --git a/zig/lib/libc/ohos/include/fortify/linux/poll.h b/zig/lib/libc/ohos/include/fortify/linux/poll.h
 new file mode 100644
 index 0000000000000000000000000000000000000000..69497835d96ef5959798079efed9b95f11851ffa
@@ -135900,10 +135898,10 @@ index 0000000000000000000000000000000000000000..06d45601b2be9d4823093283491a92f2
 +}
 diff --git a/zig/lib/libc/ohos/src/network/lookup_name.c b/zig/lib/libc/ohos/src/network/lookup_name.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..75282d219949753fd4f3697367042345be8764c6
+index 0000000000000000000000000000000000000000..027b6a6bae05ffc07697b8b04e431802c685c68f
 --- /dev/null
 +++ b/zig/lib/libc/ohos/src/network/lookup_name.c
-@@ -0,0 +1,1129 @@
+@@ -0,0 +1,1130 @@
 +#include <sys/socket.h>
 +#include <netinet/in.h>
 +#include <netdb.h>
@@ -136156,17 +136154,18 @@ index 0000000000000000000000000000000000000000..75282d219949753fd4f3697367042345
 +#else
 +	struct dpc_ctx ctx = { .addrs = buf, .canon = canon };
 +#endif
-+	static const struct { int af; int rr; } afrr_ipv6_enable[2] = {
++	struct address_family_resource_record { int af; int rr; };
++	static const struct address_family_resource_record afrr_ipv6_enable[2] = {
 +		{ .af = AF_INET, .rr = RR_AAAA },
 +		{ .af = AF_INET6, .rr = RR_A },
 +	};
-+	static const struct { int af; int rr; } afrr_ipv4_only[1] = {
++	static const struct address_family_resource_record afrr_ipv4_only[1] = {
 +		{ .af = AF_INET6, .rr = RR_A },
 +	};
-+	static const struct { int af; int rr; } afrr_ipv6_only[1] = {
++	static const struct address_family_resource_record afrr_ipv6_only[1] = {
 +		{ .af = AF_INET, .rr = RR_AAAA },
 +	};
-+	struct {int af; int rr;} *afrr = afrr_ipv6_enable;
++	const struct address_family_resource_record *afrr = afrr_ipv6_enable;
 +
 +	if ((!IsIpv6Enable(netid) && IsIpv4Enable(netid)) || (family == AF_INET)) {
 +		if (family == AF_INET6) {
