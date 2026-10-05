@@ -1,13 +1,26 @@
-# Zig 0.17.x OpenHarmony 构建与验证
+# Zig 0.17.0 OpenHarmony 构建与验证
 
 本仓库把 Zig/OpenHarmony 适配整理成可重放的源码 patch、完整构建矩阵和
 三架构 QEMU 运行测试。基线固定为官方
 [`ziglang/zig-bootstrap`](https://codeberg.org/ziglang/zig-bootstrap.git)
-的 `master` 分支 0.17 开发版提交：
+的 `0.17.0` 正式发布标签（`0.17.x` 分支）提交：
 
 ```text
-8a7dffbf56cdbcea8a19f10dc48f4ad1ea376252
+b12ab1fbafc3a290d6a13c42b14e1c67dd826c0f
 ```
+
+官方发布于 2026-10-01；源码归档和校验和见
+[官方版本索引](https://ziglang.org/download/index.json)。包内 `zig version` 与
+`OHOS-MANIFEST.json` 均使用 `0.17.0`。
+
+本次构建的七个平台包、各包 SHA-256、完整源码补丁及验证记录保存在
+[`zig-bootstrap/dist/0.17.0/`](zig-bootstrap/dist/0.17.0/)。验证范围和客体运行
+限制见该目录下的 `validation-report.txt`；包与源码一致性记录见
+`archive-verification.json`。
+
+发布附件沿用 [0.16.0](https://github.com/openharmony-zig/zig-patch/releases/tag/0.16.0)
+的命名和格式：七个平台的 `.tar.xz` 及其 `.sha256`，加四个宿主平台的
+`.tar.gz`，共 18 个文件。GitHub 自动生成的两种源码归档由发布标签提供。
 
 ## 产物矩阵
 
@@ -33,18 +46,38 @@ OHOS 原生 Zig：
 
 ## 从干净源码重放
 
+本地需要 Git、C/C++ 编译器、CMake、Ninja、jq、ripgrep、xz 和 Python 3。
+完整 patch 已包含 OHOS libc、头文件、OpenLibm binary128 源码及构建脚本；
+从干净 checkout 执行以下命令即可构建，原有构建目录和已安装的 OHOS 库
+均不是必需输入。
+
 ```sh
 git clone --recurse-submodules <本仓库地址>
 cd zig-patch
 
-# 严格检查固定的 0.17 开发版基线并应用完整 OHOS patch。
+# 严格检查固定的 0.17.0 正式版基线并应用完整 OHOS patch。
 scripts/apply-ohos-patch.sh
 
 # 构建、检查并打包上述七个目标；包和 SHA-256 位于 zig-bootstrap/dist/。
 # 归档统一命名为 zig-<target>-<cpu>.tar.xz，例如：
 # zig-aarch64-macos-none-baseline.tar.xz
-scripts/build-matrix.sh
+CMAKE_GENERATOR=Ninja CMAKE_BUILD_PARALLEL_LEVEL=6 scripts/build-matrix.sh
+
+# 整理与 0.16.0 一致的发布附件；输出到 dist/releases/0.17.0/assets/。
+python3 scripts/prepare-release.py
 ```
+
+使用本次已验证的版本化产物时执行：
+
+```sh
+python3 scripts/prepare-release.py --source-dir zig-bootstrap/dist/0.17.0
+```
+
+准备脚本核对官方 bootstrap 基线、包内版本/目标/manifest 和 SHA-256，
+四个宿主 gzip 包与对应 xz 包解压后的 tar 数据完全一致。
+`dist/releases/0.17.0/assets/` 可直接作为上传附件目录；旁边的 `SHA256SUMS`
+和 `release-assets.json` 记录全部附件的校验和。脚本支持与构建矩阵相同的
+`--only`/`--targets` 选项。
 
 可分组或选择目标：
 
@@ -61,7 +94,7 @@ scripts/build-matrix.sh --skip-package     # 构建/检查但不生成归档
 并行任务必须使用不同 target，不能共享同一个
 `out/build-llvm-<target>-<cpu>` 目录。
 
-## QEMU 真机级验证
+## QEMU 客体验证
 
 准备 `harmony-contrib/ohos-qemu` 的三个发布归档后：
 

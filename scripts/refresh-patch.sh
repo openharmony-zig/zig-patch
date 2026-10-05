@@ -8,13 +8,17 @@ TMPDIR="${OHOS_TMPDIR:-${ROOT}/zig-bootstrap/out/tmp}"
 mkdir -p "${TMPDIR}"
 export TMPDIR
 BOOTSTRAP="${ROOT}/zig-bootstrap"
-BASE="8a7dffbf56cdbcea8a19f10dc48f4ad1ea376252"
+BASE="b12ab1fbafc3a290d6a13c42b14e1c67dd826c0f"
 PATHS_FILE="${BOOTSTRAP}/ohos/source-paths.txt"
 OUTPUT="${ROOT}/patch/zig-ohos-0.17.x.patch"
 TEMP_INDEX="$(mktemp "${TMPDIR:-/tmp}/zig-ohos-index.XXXXXX")"
 trap 'rm -f "${TEMP_INDEX}"' EXIT
 
 git -C "${BOOTSTRAP}" cat-file -e "${BASE}^{commit}"
+[[ "$(git -C "${BOOTSTRAP}" rev-parse HEAD)" == "${BASE}" ]] || {
+  printf 'zig-bootstrap must be checked out at %s before exporting\n' "${BASE}" >&2
+  exit 1
+}
 [[ -f "${PATHS_FILE}" ]] || { printf 'missing %s\n' "${PATHS_FILE}" >&2; exit 1; }
 
 real_index="$(git -C "${BOOTSTRAP}" rev-parse --git-path index)"
