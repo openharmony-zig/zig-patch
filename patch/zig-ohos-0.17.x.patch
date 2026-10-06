@@ -8,10 +8,10 @@ index 28ac84679627b4915780287653344891165645ad..f96b24c44b4790460e9e47c507b220a4
  .zig-cache
 +dist/
 diff --git a/README.md b/README.md
-index 7d4200ab8a53cfdfbf348a7b7c617af79d2e9f0b..0b07d7b8d35d8d0fc2bdddd5ab62ef8da6e102b7 100644
+index 4630aeef44d604b2a10a841ba1406020fa208a30..3d2ba9c0faa20af99c9c8e1fc586dbd15d8323a0 100644
 --- a/README.md
 +++ b/README.md
-@@ -67,6 +67,29 @@ significantly affect how long it takes to build:
+@@ -68,6 +68,29 @@ significantly affect how long it takes to build:
  
  When it succeeds, output can be found in `out/zig-<target>-<cpu>/`.
  
@@ -42,13 +42,13 @@ index 7d4200ab8a53cfdfbf348a7b7c617af79d2e9f0b..0b07d7b8d35d8d0fc2bdddd5ab62ef8d
  
  Bootstrapping on Windows with MSVC is also possible via `build.bat`, which
 diff --git a/build b/build
-index 531a2859b501a79e7b9fd279035520f213160315..5eeddc52f055a18a9528b43fe38d949c2262b0aa 100755
+index 4759ef7a5f464439b64732d8fd22f6ddf1bea46c..473fc67033b571e7d90f5c5a4e82249b0c3c340a 100755
 --- a/build
 +++ b/build
 @@ -8,6 +8,9 @@ MCPU="$2" # Examples: `baseline`, `native`, `generic+v7a`, or `arm1176jzf_s`
  
  ROOTDIR="$(pwd)"
- ZIG_VERSION="0.17.0-dev.986+f3544a707"
+ ZIG_VERSION="0.17.0"
 +export ZIG_GLOBAL_CACHE_DIR="$ROOTDIR/out/zig-cache/global"
 +export ZIG_LOCAL_CACHE_DIR="$ROOTDIR/out/zig-cache/local"
 +mkdir -p "$ZIG_GLOBAL_CACHE_DIR" "$ZIG_LOCAL_CACHE_DIR"
@@ -129,15 +129,26 @@ index 0000000000000000000000000000000000000000..fdd9d408ea8b87de7915aab10e06e537
 +    && rm -rf /var/lib/apt/lists/*
 diff --git a/ohos/README.md b/ohos/README.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..ebf86ca04ff23e9c750dcb524fb742a5c300d7de
+index 0000000000000000000000000000000000000000..eec84c0625e0a1190c3c0b40f5c80575a0f0fd3d
 --- /dev/null
 +++ b/ohos/README.md
-@@ -0,0 +1,240 @@
+@@ -0,0 +1,251 @@
 +# Zig OpenHarmony 维护与发布
 +
 +本目录把仓库中的 OHOS 适配定义成一套可复现的源码维护、构建、打包和
 +QEMU 验证流程。源码树本身是唯一真实来源；导出的 patch 和二进制包都是
 +可重新生成的产物，不应手工修改。
++
++当前基线是 Zig `0.17.0` 正式版，bootstrap 标签提交为
++`b12ab1fbafc3a290d6a13c42b14e1c67dd826c0f`。官方 bootstrap 归档的 URL 和
++SHA-256 同样记录在 `manifest.json`。适配沿用 `cc_dir` 字段和统一的 PIE
++策略入口，并保留 OHOS x86_64 的 IEEE binary128 `long double` ABI。
++DNS 查询表的匿名结构体指针也统一为具名 `const` 类型，以通过新版 C
++编译诊断；此修正由 libc overlay 生成器重放。
++ARMv7 fortify 的乘法溢出检查使用结果类型通用的 builtin，兼容新版 Clang。
++LLVM 后端同时修正隐藏参数的寄存器计数，使 x86_64 soft-f80 compiler-rt
++的结构体参数与函数签名、调用点保持一致；C ABI 测试覆盖返回值隐藏指针
++导致参数寄存器耗尽的双向 Zig/C 调用。
 +
 +## 支持矩阵
 +
@@ -243,7 +254,7 @@ index 0000000000000000000000000000000000000000..ebf86ca04ff23e9c750dcb524fb742a5
 +源码分支是推荐维护方式。如果需要把适配移植到相同 Zig bootstrap 基线：
 +
 +```sh
-+scripts/ohos/export-patch.sh --base 8a7dffbf56cdbcea8a19f10dc48f4ad1ea376252
++scripts/ohos/export-patch.sh --base b12ab1fbafc3a290d6a13c42b14e1c67dd826c0f
 +```
 +
 +输出位于 `dist/patches/`，范围由 `source-paths.txt` 明确定义。patch 只保证
@@ -375,23 +386,30 @@ index 0000000000000000000000000000000000000000..ebf86ca04ff23e9c750dcb524fb742a5
 +不要提交 `out/`、`dist/`、QEMU 镜像或本地 SDK。
 diff --git a/ohos/manifest.json b/ohos/manifest.json
 new file mode 100644
-index 0000000000000000000000000000000000000000..794412f3a27064ca545260d044334b78bce961b7
+index 0000000000000000000000000000000000000000..890a215c290fce778e1eeb7e7aad2004f5e6426d
 --- /dev/null
 +++ b/ohos/manifest.json
-@@ -0,0 +1,119 @@
+@@ -0,0 +1,126 @@
 +{
 +  "schema_version": 1,
 +  "zig": {
-+    "version": "0.17.0-dev.986+f3544a707",
++    "version": "0.17.0",
 +    "bootstrap_repository": "https://codeberg.org/ziglang/zig-bootstrap.git",
-+    "bootstrap_branch": "master",
-+    "bootstrap_base_commit": "8a7dffbf56cdbcea8a19f10dc48f4ad1ea376252",
++    "bootstrap_branch": "0.17.x",
++    "bootstrap_base_commit": "b12ab1fbafc3a290d6a13c42b14e1c67dd826c0f",
 +    "port_origin": {
 +      "repository": "https://codeberg.org/richerfu/zig.git",
 +      "commits": [
 +        "059401127106039a72d4d8603639d198d35e2c74",
 +        "5cb40baaaa4ffb167d452146fb67cae4618fc8a3"
 +      ]
++    },
++    "bootstrap_tag": "0.17.0",
++    "release_date": "2026-10-01",
++    "bootstrap_archive": {
++      "tarball": "https://ziglang.org/download/0.17.0/zig-bootstrap-0.17.0.tar.xz",
++      "shasum": "1e9e9b8e3c753b35dfb1d9ea48f097579fadbd3e5c1e724ab3fc5bce05477b71",
++      "size": "57030388"
 +    }
 +  },
 +  "host_targets": [
@@ -580,10 +598,10 @@ index 0000000000000000000000000000000000000000..dc490a0143f799a2d8fbf8054cfd5039
 ++}
 diff --git a/ohos/source-paths.txt b/ohos/source-paths.txt
 new file mode 100644
-index 0000000000000000000000000000000000000000..ca96babfa1f8b6ebf7209fbd96e23b51a13695e7
+index 0000000000000000000000000000000000000000..4f9b2d1dec289ad773898591c8f76080a960c8f9
 --- /dev/null
 +++ b/ohos/source-paths.txt
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,39 @@
 +# Paths that form the reusable Zig/OpenHarmony source change.
 +# scripts/ohos/export-patch.sh passes this file to git pathspec handling.
 +.gitignore
@@ -608,6 +626,7 @@ index 0000000000000000000000000000000000000000..ca96babfa1f8b6ebf7209fbd96e23b51
 +zig/src/Compilation.zig
 +zig/src/Compilation/Config.zig
 +zig/src/codegen/llvm.zig
++zig/src/codegen/llvm/FuncGen.zig
 +zig/src/libs/musl.zig
 +zig/src/libs/libcxx.zig
 +zig/src/libs/ohos.zig
@@ -624,10 +643,10 @@ index 0000000000000000000000000000000000000000..ca96babfa1f8b6ebf7209fbd96e23b51
 +scripts/ohos
 diff --git a/scripts/ohos/build-matrix.sh b/scripts/ohos/build-matrix.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..52e3e943f36c6e7c1d259d5e6415580b3004876a
+index 0000000000000000000000000000000000000000..99702d19a0d3660543f6ff5f79c38ccf4ac24e48
 --- /dev/null
 +++ b/scripts/ohos/build-matrix.sh
-@@ -0,0 +1,198 @@
+@@ -0,0 +1,208 @@
 +#!/usr/bin/env bash
 +set -euo pipefail
 +export LC_ALL=C
@@ -775,7 +794,17 @@ index 0000000000000000000000000000000000000000..52e3e943f36c6e7c1d259d5e6415580b
 +  # format checks while rebuilding broken target libraries for users.
 +  for source_path in \
 +    zig/lib/libc/musl/src/internal/stdio_impl.h \
-+    zig/lib/std/Io/Threaded.zig
++    zig/lib/libc/ohos/src/network/lookup_name.c \
++    zig/lib/libc/ohos/include/fortify/fortify.h \
++    zig/lib/libc/include/generic-ohos/fortify/fortify.h \
++    zig/lib/std/Io/Threaded.zig \
++    zig/lib/std/Target.zig \
++    zig/lib/std/c.zig \
++    zig/lib/std/zig/LibCInstallation.zig \
++    zig/lib/std/heap/SmpAllocator.zig \
++    zig/lib/c/malloc.zig \
++    zig/lib/compiler_rt.zig \
++    zig/lib/compiler_rt/arm.zig
 +  do
 +    installed_path="${prefix}/lib/${source_path#zig/lib/}"
 +    [[ -f "${installed_path}" ]] || {
@@ -964,10 +993,10 @@ index 0000000000000000000000000000000000000000..4f8f8877e2fa69927302c1b2f5deb48f
 +printf 'package: %s\nchecksum: %s\n' "${ARCHIVE}" "${ARCHIVE}.sha256"
 diff --git a/scripts/ohos/check-source.sh b/scripts/ohos/check-source.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..7bd0bd733680e7ca083f1cf88f0f24fb87e0b2c6
+index 0000000000000000000000000000000000000000..9fe7619a99672d5bea931778e5262c6bbca511ae
 --- /dev/null
 +++ b/scripts/ohos/check-source.sh
-@@ -0,0 +1,167 @@
+@@ -0,0 +1,173 @@
 +#!/usr/bin/env bash
 +set -euo pipefail
 +export LC_ALL=C
@@ -1014,10 +1043,12 @@ index 0000000000000000000000000000000000000000..7bd0bd733680e7ca083f1cf88f0f24fb
 +command -v jq >/dev/null 2>&1 || fail "jq is required"
 +jq -e '
 +  .schema_version == 1 and
-+  .zig.version == "0.17.0-dev.986+f3544a707" and
++  .zig.version == "0.17.0" and
 +  .zig.bootstrap_repository == "https://codeberg.org/ziglang/zig-bootstrap.git" and
-+  .zig.bootstrap_branch == "master" and
-+  .zig.bootstrap_base_commit == "8a7dffbf56cdbcea8a19f10dc48f4ad1ea376252" and
++  .zig.bootstrap_branch == "0.17.x" and
++  .zig.bootstrap_base_commit == "b12ab1fbafc3a290d6a13c42b14e1c67dd826c0f" and
++  .zig.bootstrap_tag == "0.17.0" and
++  .zig.bootstrap_archive.shasum == "1e9e9b8e3c753b35dfb1d9ea48f097579fadbd3e5c1e724ab3fc5bce05477b71" and
 +  (.host_targets | length) == 4 and
 +  ([.host_targets[].zig_target] | sort) ==
 +    ["aarch64-macos-none", "x86_64-linux-gnu", "x86_64-linux-musl", "x86_64-windows-gnu"] and
@@ -1073,6 +1104,10 @@ index 0000000000000000000000000000000000000000..7bd0bd733680e7ca083f1cf88f0f24fb
 +rg -F '#include "../../../ohos/src/internal/stdio_impl.h"' \
 +  "${ROOT}/zig/lib/libc/musl/src/internal/stdio_impl.h" >/dev/null || \
 +  fail "generic musl stdio layout is not redirected for OHOS sources"
++
++rg -F 'const struct afrr *afrr = afrr_ipv6_enable;' \
++  "${ROOT}/zig/lib/libc/ohos/src/network/lookup_name.c" >/dev/null || \
++  fail "OHOS DNS query tables must share one const C struct type"
 +
 +wine_version="$(jq -r '.host_validation.winehq_version' "${MANIFEST}")"
 +rg -F "ARG WINE_VERSION=${wine_version}" \
@@ -1841,10 +1876,10 @@ index 0000000000000000000000000000000000000000..b36703942d341203493f1aaa417aff61
 +printf 'OHOS runtime kit ready: %s\n' "${OUTPUT}"
 diff --git a/scripts/ohos/test-host-matrix.sh b/scripts/ohos/test-host-matrix.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..27b136563a5994ea01033a1dd4c20808f10a6be8
+index 0000000000000000000000000000000000000000..e9640cb14651bffc82c0f383ba3d764ff3b5a5e8
 --- /dev/null
 +++ b/scripts/ohos/test-host-matrix.sh
-@@ -0,0 +1,318 @@
+@@ -0,0 +1,328 @@
 +#!/usr/bin/env bash
 +set -euo pipefail
 +export LC_ALL=C
@@ -1957,37 +1992,47 @@ index 0000000000000000000000000000000000000000..27b136563a5994ea01033a1dd4c20808
 +  local image="$4"
 +  local platform="$5"
 +  local home="${host_work}/container-home"
++  # Stable container paths avoid bind destinations under macOS /Volumes,
++  # which may be shadowed by the container runtime's host filesystem mount.
++  local container_root=/workspace/zig-bootstrap
++  local container_work=/workspace/validation
++  local container_host_work="${container_work}${host_work#"${WORK}"}"
++  local container_zig="${container_root}/${zig_bin#"${ROOT}/"}"
++  local container_runner="${runner}"
++  if [[ "${runner}" == "${ROOT}/"* ]]; then
++    container_runner="${container_root}/${runner#"${ROOT}/"}"
++  fi
 +  local arch
-+  local -a args
++  local -a args wine_env
 +  mkdir -p "${home}"
 +  for arch in arm64 armv7a x86_64; do
-+    args=(
-+      run --rm --platform "${platform}"
-+      --user "$(id -u):$(id -g)"
-+      -e "HOME=${home}"
-+      -e WINEARCH=win64
-+      -e WINEDEBUG=-all
-+      -e "WINEPREFIX=${host_work}/wine-prefix"
-+    )
++    wine_env=()
 +    if [[ "${runner}" == *wine-path-runner.sh ]]; then
-+      args+=(
++      wine_env=(
 +        -e OHOS_WINE_BIN=/opt/wine-stable/bin/wine
 +        -e ZIG_WINE_FILE_LOCK_WORKAROUND=1
 +      )
 +    fi
-+    args+=(
-+      -v "${ROOT}:${ROOT}"
-+      -v "${WORK}:${WORK}"
-+      -w "${ROOT}"
++    args=(
++      run --rm --platform "${platform}"
++      --user "$(id -u):$(id -g)"
++      -e "HOME=${container_host_work}/container-home"
++      -e WINEARCH=win64
++      -e WINEDEBUG=-all
++      -e "WINEPREFIX=${container_host_work}/wine-prefix"
++      ${wine_env[@]+"${wine_env[@]}"}
++      -v "${ROOT}:${container_root}"
++      -v "${WORK}:${container_work}"
++      -w "${container_root}"
 +      "${image}"
 +      bash scripts/ohos/compile-smoke.sh
-+      --zig "${zig_bin}"
++      --zig "${container_zig}"
 +      --arch "${arch}"
-+      --work-dir "${host_work}"
-+      --zig-lib-dir "${ROOT}/zig/lib"
++      --work-dir "${container_host_work}"
++      --zig-lib-dir "${container_root}/zig/lib"
 +    )
 +    if [[ -n "${runner}" ]]; then
-+      args+=(--zig-runner "${runner}")
++      args+=(--zig-runner "${container_runner}")
 +    fi
 +    if [[ "${runner}" == /usr/bin/qemu-x86_64 ]]; then
 +      args+=(--jobs 2)
@@ -3649,7 +3694,7 @@ index 0000000000000000000000000000000000000000..5b26c1e068e57c56a7905e96078bfa50
 +
 +exec "${WINE_BIN}" "${converted[@]}"
 diff --git a/zig/lib/c/malloc.zig b/zig/lib/c/malloc.zig
-index 083825e438a87d1eb894f028943f81f17d06e963..1ee17c799c98ac3f1f4534f0b8a14f3f292d48dc 100644
+index b9ba905440726fecbe7204ecd4e2d42bad198579..34734a322369fc0a4846c9e3d9f93ee2335be234 100644
 --- a/zig/lib/c/malloc.zig
 +++ b/zig/lib/c/malloc.zig
 @@ -36,6 +36,21 @@ comptime {
@@ -3711,7 +3756,7 @@ index 083825e438a87d1eb894f028943f81f17d06e963..1ee17c799c98ac3f1f4534f0b8a14f3f
  /// which are required by Zig memory allocators.
  const Header = packed struct(u64) {
 @@ -195,3 +239,73 @@ fn nomem() ?[*]align(alignment_bytes) u8 {
-     std.c._errno().* = @intFromEnum(std.c.E.NOMEM);
+     std.c._errno().* = @backingInt(std.c.E.NOMEM);
      return null;
  }
 +
@@ -3785,7 +3830,7 @@ index 083825e438a87d1eb894f028943f81f17d06e963..1ee17c799c98ac3f1f4534f0b8a14f3f
 +    return 0;
 +}
 diff --git a/zig/lib/compiler/aro/aro/Toolchain.zig b/zig/lib/compiler/aro/aro/Toolchain.zig
-index eb28d7943ca948d91f2afc19da7d935a743f1e3b..a756eebfafdbacd57c151b8583c67ae56150be3e 100644
+index 51399e08cd725797e7c13f4d86f379507b419579..efb7a2fbe78a6c9f35ed0787a07ac2711d19a301 100644
 --- a/zig/lib/compiler/aro/aro/Toolchain.zig
 +++ b/zig/lib/compiler/aro/aro/Toolchain.zig
 @@ -62,7 +62,7 @@ pub fn getTarget(tc: *const Toolchain) *const Target {
@@ -3850,19 +3895,19 @@ index eb28d7943ca948d91f2afc19da7d935a743f1e3b..a756eebfafdbacd57c151b8583c67ae5
      }
  }
 diff --git a/zig/lib/compiler_rt.zig b/zig/lib/compiler_rt.zig
-index 73bb514565d0ee57ed721b7b366ebea209cff107..9d44b348801413ee76a60161666b85e4f2e9a028 100644
+index 885af93f59009fe62c6344475b7333435e60ac93..53735812e68d0c00d5e27b338008e9e21860ebfa 100644
 --- a/zig/lib/compiler_rt.zig
 +++ b/zig/lib/compiler_rt.zig
-@@ -367,6 +367,7 @@ pub const want_aeabi = switch (builtin.abi) {
+@@ -220,6 +220,7 @@ pub const want_aeabi = switch (builtin.abi) {
      .gnueabihf,
      .android,
      .androideabi,
 +    .ohoseabi,
-     => switch (builtin.cpu.arch) {
-         .arm, .armeb, .thumb, .thumbeb => true,
-         else => false,
+     => builtin.cpu.arch.isArm(),
+     else => false,
+ };
 diff --git a/zig/lib/compiler_rt/arm.zig b/zig/lib/compiler_rt/arm.zig
-index d3a9e4f69695026fd6435d0f4b21ee8e7d1f5455..33ec381d0bc242884af658265a24aed8b78020b8 100644
+index e9edc8f7180ea5e29507be486ff2fdceb7ca26f7..0dfd86aea2a113e9ddcddbf7c7c0d2bb53565ad7 100644
 --- a/zig/lib/compiler_rt/arm.zig
 +++ b/zig/lib/compiler_rt/arm.zig
 @@ -41,7 +41,7 @@ comptime {
@@ -8596,7 +8641,7 @@ index 0000000000000000000000000000000000000000..f50bc6124f5badadf43e504511313d74
 +#endif
 diff --git a/zig/lib/libc/include/generic-ohos/fortify/fortify.h b/zig/lib/libc/include/generic-ohos/fortify/fortify.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..110df54c0e64d1b5378f90f04edd2750d9121c60
+index 0000000000000000000000000000000000000000..0748cc9be451cc654a211fc3f3bcf12ef199952a
 --- /dev/null
 +++ b/zig/lib/libc/include/generic-ohos/fortify/fortify.h
 @@ -0,0 +1,137 @@
@@ -8672,7 +8717,7 @@ index 0000000000000000000000000000000000000000..110df54c0e64d1b5378f90f04edd2750
 +
 +#define __DIAGNOSE_BOS0(s) __DIAGNOSE_BOSN((s), 0)
 +#define __DIAGNOSE_PASS_OBJECT_SIZE_N(n) __attribute__((pass_object_size(n)))
-+#define __DIAGNOSE__SIZE_MUL_OVERFLOW(a, b, result) __builtin_umull_overflow(a, b, result)
++#define __DIAGNOSE__SIZE_MUL_OVERFLOW(a, b, result) __builtin_mul_overflow(a, b, result)
 +#define __DIAGNOSE_PRINTFLIKE(x, y) __attribute__((__format__(printf, x, y)))
 +#define __DIAGNOSE_CALL_BYPASSING_FORTIFY(fn) (&(fn))
 +#define __DIAGNOSE_FORTIFY_INLINE static __inline__ __attribute__((no_stack_protector)) \
@@ -28558,7 +28603,7 @@ index 0000000000000000000000000000000000000000..af46bd13fcec706049ddaf094bf5c5ce
 \ No newline at end of file
 diff --git a/zig/lib/libc/ohos/include/fortify/fortify.h b/zig/lib/libc/ohos/include/fortify/fortify.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..1d4248a575f1667a86e37d2a269faeffc4293252
+index 0000000000000000000000000000000000000000..fdd7cc55a38acda268fb32a5524641584816240b
 --- /dev/null
 +++ b/zig/lib/libc/ohos/include/fortify/fortify.h
 @@ -0,0 +1,143 @@
@@ -28705,6 +28750,7 @@ index 0000000000000000000000000000000000000000..1d4248a575f1667a86e37d2a269faeff
 +#endif
 +
 +#endif
+\ No newline at end of file
 diff --git a/zig/lib/libc/ohos/include/fortify/linux/fcntl.h b/zig/lib/libc/ohos/include/fortify/linux/fcntl.h
 new file mode 100644
 index 0000000000000000000000000000000000000000..af46bd13fcec706049ddaf094bf5c5cea6804f8e
@@ -135898,10 +135944,10 @@ index 0000000000000000000000000000000000000000..06d45601b2be9d4823093283491a92f2
 +}
 diff --git a/zig/lib/libc/ohos/src/network/lookup_name.c b/zig/lib/libc/ohos/src/network/lookup_name.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..027b6a6bae05ffc07697b8b04e431802c685c68f
+index 0000000000000000000000000000000000000000..9fcb1b244a9128497777ddd1741462d651969a90
 --- /dev/null
 +++ b/zig/lib/libc/ohos/src/network/lookup_name.c
-@@ -0,0 +1,1130 @@
+@@ -0,0 +1,1129 @@
 +#include <sys/socket.h>
 +#include <netinet/in.h>
 +#include <netdb.h>
@@ -136154,18 +136200,17 @@ index 0000000000000000000000000000000000000000..027b6a6bae05ffc07697b8b04e431802
 +#else
 +	struct dpc_ctx ctx = { .addrs = buf, .canon = canon };
 +#endif
-+	struct address_family_resource_record { int af; int rr; };
-+	static const struct address_family_resource_record afrr_ipv6_enable[2] = {
++	static const struct afrr { int af; int rr; } afrr_ipv6_enable[2] = {
 +		{ .af = AF_INET, .rr = RR_AAAA },
 +		{ .af = AF_INET6, .rr = RR_A },
 +	};
-+	static const struct address_family_resource_record afrr_ipv4_only[1] = {
++	static const struct afrr afrr_ipv4_only[1] = {
 +		{ .af = AF_INET6, .rr = RR_A },
 +	};
-+	static const struct address_family_resource_record afrr_ipv6_only[1] = {
++	static const struct afrr afrr_ipv6_only[1] = {
 +		{ .af = AF_INET, .rr = RR_AAAA },
 +	};
-+	const struct address_family_resource_record *afrr = afrr_ipv6_enable;
++	const struct afrr *afrr = afrr_ipv6_enable;
 +
 +	if ((!IsIpv6Enable(netid) && IsIpv4Enable(netid)) || (family == AF_INET)) {
 +		if (family == AF_INET6) {
@@ -159188,10 +159233,10 @@ index 0000000000000000000000000000000000000000..d4292475b3cc3d5177f46aed5de59f9e
 +#endif
 \ No newline at end of file
 diff --git a/zig/lib/std/Io/Threaded.zig b/zig/lib/std/Io/Threaded.zig
-index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b28365f751335 100644
+index 2c7cdbc8e99e37081200900866b94edf7672e272..4071f15a07d05f3466de46c64f9f46e0c5f63b01 100644
 --- a/zig/lib/std/Io/Threaded.zig
 +++ b/zig/lib/std/Io/Threaded.zig
-@@ -209,6 +209,9 @@ pub const Environ = struct {
+@@ -211,6 +211,9 @@ pub const Environ = struct {
      pub const Exist = struct {
          NO_COLOR: bool = false,
          CLICOLOR_FORCE: bool = false,
@@ -159201,7 +159246,7 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
      };
  
      pub const String = switch (native_os) {
-@@ -252,6 +255,8 @@ pub const Environ = struct {
+@@ -254,6 +257,8 @@ pub const Environ = struct {
                      environ.exist.NO_COLOR = true;
                  } else if (windows.eqlIgnoreCaseWtf16(key_w, &.{ 'C', 'L', 'I', 'C', 'O', 'L', 'O', 'R', '_', 'F', 'O', 'R', 'C', 'E' })) {
                      environ.exist.CLICOLOR_FORCE = true;
@@ -159210,7 +159255,7 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
                  } else if (windows.eqlIgnoreCaseWtf16(key_w, &.{ 'Z', 'I', 'G', '_', 'P', 'R', 'O', 'G', 'R', 'E', 'S', 'S' })) {
                      environ.zig_progress_file = file: {
                          var value_buf: [std.fmt.count("{d}", .{std.math.maxInt(usize)})]u8 = undefined;
-@@ -4416,7 +4421,6 @@ fn dirCreateFileWindows(
+@@ -4520,7 +4525,6 @@ fn dirCreateFileWindows(
      flags: Dir.CreateFileOptions,
  ) File.OpenError!File {
      const t: *Threaded = @ptrCast(@alignCast(userdata));
@@ -159218,7 +159263,7 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
  
      if (std.mem.eql(u8, sub_path, ".")) return error.IsDir;
      if (std.mem.eql(u8, sub_path, "..")) return error.IsDir;
-@@ -4531,6 +4535,10 @@ fn dirCreateFileWindows(
+@@ -4635,6 +4639,10 @@ fn dirCreateFileWindows(
          .shared => false,
          .exclusive => true,
      };
@@ -159229,7 +159274,7 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
  
      syscall = try .start();
      while (true) switch (windows.ntdll.NtLockFile(
-@@ -5012,11 +5020,12 @@ fn dirOpenFileWindows(
+@@ -5116,11 +5124,12 @@ fn dirOpenFileWindows(
      flags: Dir.OpenFileOptions,
  ) File.OpenError!File {
      const t: *Threaded = @ptrCast(@alignCast(userdata));
@@ -159244,7 +159289,7 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
  }
  
  pub fn dirOpenFileWtf16(
-@@ -9279,12 +9288,17 @@ fn fileSetTimestamps(
+@@ -9454,12 +9463,17 @@ fn fileSetTimestamps(
  const windows_lock_range_off: windows.LARGE_INTEGER = 0;
  const windows_lock_range_len: windows.LARGE_INTEGER = 1;
  
@@ -159264,7 +159309,7 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
          const exclusive = switch (lock) {
              .none => {
                  // To match the non-Windows behavior, unlock
-@@ -9362,10 +9376,10 @@ fn fileLock(userdata: ?*anyopaque, file: File, lock: File.Lock) File.LockError!v
+@@ -9537,10 +9551,10 @@ fn fileLock(userdata: ?*anyopaque, file: File, lock: File.Lock) File.LockError!v
  
  fn fileTryLock(userdata: ?*anyopaque, file: File, lock: File.Lock) File.LockError!bool {
      if (native_os == .wasi) return error.FileLocksUnsupported;
@@ -159277,7 +159322,7 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
          const exclusive = switch (lock) {
              .none => {
                  // To match the non-Windows behavior, unlock
-@@ -9455,10 +9469,10 @@ fn fileTryLock(userdata: ?*anyopaque, file: File, lock: File.Lock) File.LockErro
+@@ -9630,10 +9644,10 @@ fn fileTryLock(userdata: ?*anyopaque, file: File, lock: File.Lock) File.LockErro
  
  fn fileUnlock(userdata: ?*anyopaque, file: File) void {
      if (native_os == .wasi) return;
@@ -159290,7 +159335,7 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
          var io_status_block: windows.IO_STATUS_BLOCK = undefined;
          while (true) switch (windows.ntdll.NtUnlockFile(
              file.handle,
-@@ -9491,10 +9505,10 @@ fn fileUnlock(userdata: ?*anyopaque, file: File) void {
+@@ -9666,10 +9680,10 @@ fn fileUnlock(userdata: ?*anyopaque, file: File) void {
  
  fn fileDowngradeLock(userdata: ?*anyopaque, file: File) File.DowngradeLockError!void {
      if (native_os == .wasi) return;
@@ -159304,10 +159349,10 @@ index d4b202e12d0fa9087716209c24215bc179d71c1a..82f438100ea316d30862d550670b2836
          // implement this function, we first obtain another lock in shared
          // mode. This changes the exclusivity flag, but increments the
 diff --git a/zig/lib/std/Target.zig b/zig/lib/std/Target.zig
-index a75d23ca4d7530da5aaeda2c3f9c5a2056914391..9405974786f1d5e8375b5d983b042456bf7d7fc4 100644
+index 76d8122a561ad747d8c7c05badd529388d22ec77..265318e6fd964eb8a7df9b4752937df6f13236a9 100644
 --- a/zig/lib/std/Target.zig
 +++ b/zig/lib/std/Target.zig
-@@ -2286,7 +2286,9 @@ pub fn requiresLibC(target: *const Target) bool {
+@@ -2310,7 +2310,9 @@ pub fn requiresLibC(target: *const Target) bool {
          // is implemented through calls to `__emutls_get_address`. We provide this function in
          // compiler-rt, but it's implemented by way of `pthread_key_create` et al, so linking libc
          // is required.
@@ -159318,7 +159363,7 @@ index a75d23ca4d7530da5aaeda2c3f9c5a2056914391..9405974786f1d5e8375b5d983b042456
  
          .windows,
          .freebsd,
-@@ -2562,6 +2564,13 @@ pub const DynamicLinker = struct {
+@@ -2593,6 +2595,13 @@ pub const DynamicLinker = struct {
                          if (ptrBitWidth_cpu_abi(cpu, abi) == 64) "64" else "",
                      }) else none,
  
@@ -159332,16 +159377,16 @@ index a75d23ca4d7530da5aaeda2c3f9c5a2056914391..9405974786f1d5e8375b5d983b042456
                      else => none,
                  }
              else if (abi.isMusl())
-@@ -3288,7 +3297,7 @@ pub fn cTypeBitSize(target: *const Target, c_type: CType) u16 {
-                     else => return 64,
+@@ -3345,7 +3354,7 @@ pub fn cTypeBitSize(target: *const Target, c_type: CType) ?u16 {
+                     else => 64,
                  },
-                 .longlong, .ulonglong, .double => return 64,
--                .longdouble => return 80,
-+                .longdouble => if (target.abi.isOpenHarmony()) return 128 else return 80,
+                 .longlong, .ulonglong, .double => 64,
+-                .longdouble => 80,
++                .longdouble => if (target.abi.isOpenHarmony()) 128 else 80,
              },
              else => switch (c_type) {
-                 .char => return 8,
-@@ -3873,3 +3882,16 @@ const assert = std.debug.assert;
+                 .char => 8,
+@@ -3837,3 +3846,16 @@ const assert = std.debug.assert;
  test {
      std.testing.refAllDecls(Cpu.Arch);
  }
@@ -159359,10 +159404,10 @@ index a75d23ca4d7530da5aaeda2c3f9c5a2056914391..9405974786f1d5e8375b5d983b042456
 +    try std.testing.expectEqual(@as(u16, 16), target.cTypeAlignment(.longdouble));
 +}
 diff --git a/zig/lib/std/c.zig b/zig/lib/std/c.zig
-index 13a2b7eb4e6607ba9ea1fba0fe6a19feec998890..26d0e9d35719367f2d3a128d7e40112d8423f9f5 100644
+index c03e83fd65ac14590516f3a16572f2d3cc6a41df..0dd696a1cdb7772fa625c85637375dd77eb72632 100644
 --- a/zig/lib/std/c.zig
 +++ b/zig/lib/std/c.zig
-@@ -7918,7 +7918,7 @@ pub const pthread_mutex_t = switch (native_os) {
+@@ -8162,7 +8162,7 @@ pub const pthread_mutex_t = switch (native_os) {
          data: [data_len]u8 align(@alignOf(usize)) = @splat(0),
  
          const data_len = switch (native_abi) {
@@ -159372,7 +159417,7 @@ index 13a2b7eb4e6607ba9ea1fba0fe6a19feec998890..26d0e9d35719367f2d3a128d7e40112d
                  .aarch64 => 48,
                  .x86_64 => if (native_abi == .gnux32) 32 else 40,
 diff --git a/zig/lib/std/heap/SmpAllocator.zig b/zig/lib/std/heap/SmpAllocator.zig
-index 5982026cbca00834fe7d7be5e099a9a964c17ecc..c417e18d6bcdf563b6858cea6d6dbb865a80c045 100644
+index b12d2bebc7c0c65b01a9cf70bf80e2cdcc2ce22e..2bc887729e333379edd44cdfd39ee41fe21fc5b6 100644
 --- a/zig/lib/std/heap/SmpAllocator.zig
 +++ b/zig/lib/std/heap/SmpAllocator.zig
 @@ -16,12 +16,14 @@
@@ -159503,24 +159548,25 @@ index 5982026cbca00834fe7d7be5e099a9a964c17ecc..c417e18d6bcdf563b6858cea6d6dbb86
                  continue :outer;
              }
 diff --git a/zig/lib/std/zig/LibCInstallation.zig b/zig/lib/std/zig/LibCInstallation.zig
-index 6fa49a0ce985c9115495a16c862e7d6e1a9062d5..c4528e11812b20f3f165bcec94ca4362efee165d 100644
+index 5191bb323b5873465c17749502c6930cd336f630..29cce1947125283c874680659a7baf87ec5ca3cc 100644
 --- a/zig/lib/std/zig/LibCInstallation.zig
 +++ b/zig/lib/std/zig/LibCInstallation.zig
-@@ -115,8 +115,11 @@ pub fn parse(allocator: Allocator, io: Io, libc_file: []const u8, target: *const
+@@ -127,6 +127,14 @@ pub fn parse(allocator: Allocator, io: Io, libc_file: []const u8, target: *const
          return error.ParseError;
      }
  
--    if (self.gcc_dir == null and (os_tag == .haiku or os_tag == .serenity)) {
--        log.err("gcc_dir may not be empty for {s}", .{@tagName(os_tag)});
-+    if (self.gcc_dir == null and (os_tag == .haiku or os_tag == .serenity or target.abi.isOpenHarmony())) {
-+        log.err("gcc_dir may not be empty for {s}-{s}", .{
++    if (self.cc_dir == null and (os_tag == .haiku or os_tag == .serenity or target.abi.isOpenHarmony())) {
++        log.err("cc_dir may not be empty for {s}-{s}", .{
 +            @tagName(os_tag),
 +            @tagName(target.abi),
 +        });
-         return error.ParseError;
-     }
++        return error.ParseError;
++    }
++
+     return self;
+ }
  
-@@ -216,6 +219,10 @@ pub fn findNative(gpa: Allocator, io: Io, args: FindNativeOptions) FindError!Lib
+@@ -218,6 +226,10 @@ pub fn findNative(gpa: Allocator, io: Io, args: FindNativeOptions) FindError!Lib
          try self.findNativeIncludeDirPosix(gpa, io, args);
          try self.findNativeGccDirPosix(gpa, io, args);
          self.crt_dir = try gpa.dupe(u8, "/usr/lib");
@@ -159531,7 +159577,7 @@ index 6fa49a0ce985c9115495a16c862e7d6e1a9062d5..c4528e11812b20f3f165bcec94ca4362
      } else if (builtin.target.os.tag == .illumos) {
          // There is only one libc, and its headers/libraries are always in the same spot.
          self.include_dir = try gpa.dupe(u8, "/usr/include");
-@@ -455,7 +462,7 @@ fn findNativeCrtDirPosix(self: *LibCInstallation, gpa: Allocator, io: Io, args:
+@@ -460,7 +472,7 @@ fn findNativeCrtDirPosix(self: *LibCInstallation, gpa: Allocator, io: Io, args:
      self.crt_dir = try ccPrintFileName(gpa, io, .{
          .environ_map = args.environ_map,
          .search_basename = switch (args.target.os.tag) {
@@ -159540,12 +159586,12 @@ index 6fa49a0ce985c9115495a16c862e7d6e1a9062d5..c4528e11812b20f3f165bcec94ca4362
              else => "crt1.o",
          },
          .want_dirname = .only_dir,
-@@ -472,6 +479,15 @@ fn findNativeGccDirPosix(self: *LibCInstallation, gpa: Allocator, io: Io, args:
+@@ -477,6 +489,15 @@ fn findNativeGccDirPosix(self: *LibCInstallation, gpa: Allocator, io: Io, args:
      });
  }
  
 +fn findNativeGccDirOpenHarmony(self: *LibCInstallation, gpa: Allocator, io: Io, args: FindNativeOptions) FindError!void {
-+    self.gcc_dir = try ccPrintFileName(gpa, io, .{
++    self.cc_dir = try ccPrintFileName(gpa, io, .{
 +        .environ_map = args.environ_map,
 +        .search_basename = "clang_rt.crtbegin.o",
 +        .want_dirname = .only_dir,
@@ -159556,7 +159602,7 @@ index 6fa49a0ce985c9115495a16c862e7d6e1a9062d5..c4528e11812b20f3f165bcec94ca4362
  fn findNativeKernel32LibDir(
      self: *LibCInstallation,
      gpa: Allocator,
-@@ -756,6 +772,36 @@ pub const CrtBasenames = struct {
+@@ -761,6 +782,36 @@ pub const CrtBasenames = struct {
              },
          };
  
@@ -159593,36 +159639,8 @@ index 6fa49a0ce985c9115495a16c862e7d6e1a9062d5..c4528e11812b20f3f165bcec94ca4362
          return switch (target.os.tag) {
              .linux => switch (mode) {
                  .dynamic_lib => .{
-@@ -1028,6 +1074,27 @@ pub fn resolveCrtPaths(
-                 .crtn = if (crt_basenames.crtn) |basename| try crt_dir_path.join(arena, basename) else null,
-             };
-         },
-+        .linux => if (target.abi.isOpenHarmony()) {
-+            const gcc_dir_path: Path = .{
-+                .root_dir = std.Build.Cache.Directory.cwd(),
-+                .sub_path = lci.gcc_dir orelse return error.LibCInstallationMissingCrtDir,
-+            };
-+            return .{
-+                .crt0 = if (crt_basenames.crt0) |basename| try crt_dir_path.join(arena, basename) else null,
-+                .crti = if (crt_basenames.crti) |basename| try crt_dir_path.join(arena, basename) else null,
-+                .crtbegin = if (crt_basenames.crtbegin) |basename| try gcc_dir_path.join(arena, basename) else null,
-+                .crtend = if (crt_basenames.crtend) |basename| try gcc_dir_path.join(arena, basename) else null,
-+                .crtn = if (crt_basenames.crtn) |basename| try crt_dir_path.join(arena, basename) else null,
-+            };
-+        } else {
-+            return .{
-+                .crt0 = if (crt_basenames.crt0) |basename| try crt_dir_path.join(arena, basename) else null,
-+                .crti = if (crt_basenames.crti) |basename| try crt_dir_path.join(arena, basename) else null,
-+                .crtbegin = if (crt_basenames.crtbegin) |basename| try crt_dir_path.join(arena, basename) else null,
-+                .crtend = if (crt_basenames.crtend) |basename| try crt_dir_path.join(arena, basename) else null,
-+                .crtn = if (crt_basenames.crtn) |basename| try crt_dir_path.join(arena, basename) else null,
-+            };
-+        },
-         else => {
-             return .{
-                 .crt0 = if (crt_basenames.crt0) |basename| try crt_dir_path.join(arena, basename) else null,
 diff --git a/zig/lib/std/zig/target.zig b/zig/lib/std/zig/target.zig
-index 0ac83c50dc57047ff1a937182b717960b14e8f82..4277915a640c2a38ada65edd1ec8ff8d49b7038f 100644
+index e70832bd47f5f2180bda7c41d828ddea8b1d477c..64a94d753b249bd3a52dff138593f07f22bfedc0 100644
 --- a/zig/lib/std/zig/target.zig
 +++ b/zig/lib/std/zig/target.zig
 @@ -18,6 +18,7 @@ pub const available_libcs = [_]ArchOsAbi{
@@ -159641,7 +159659,7 @@ index 0ac83c50dc57047ff1a937182b717960b14e8f82..4277915a640c2a38ada65edd1ec8ff8d
      .{ .arch = .aarch64, .os = .maccatalyst, .abi = .none, .os_ver = .{ .major = 11, .minor = 0, .patch = 0 } },
      .{ .arch = .aarch64, .os = .macos, .abi = .none, .os_ver = .{ .major = 11, .minor = 0, .patch = 0 } },
      .{ .arch = .aarch64, .os = .netbsd, .abi = .none, .os_ver = .{ .major = 9, .minor = 0, .patch = 0 } },
-@@ -113,6 +115,7 @@ pub const available_libcs = [_]ArchOsAbi{
+@@ -115,6 +117,7 @@ pub const available_libcs = [_]ArchOsAbi{
      .{ .arch = .x86_64, .os = .linux, .abi = .gnux32, .os_ver = .{ .major = 3, .minor = 4, .patch = 0 }, .glibc_triple = "x86_64-linux-gnu-x32" },
      .{ .arch = .x86_64, .os = .linux, .abi = .musl, .os_ver = .{ .major = 2, .minor = 6, .patch = 4 } },
      .{ .arch = .x86_64, .os = .linux, .abi = .muslx32, .os_ver = .{ .major = 3, .minor = 4, .patch = 0 } },
@@ -159649,7 +159667,7 @@ index 0ac83c50dc57047ff1a937182b717960b14e8f82..4277915a640c2a38ada65edd1ec8ff8d
      .{ .arch = .x86_64, .os = .maccatalyst, .abi = .none, .os_ver = .{ .major = 10, .minor = 15, .patch = 0 } },
      .{ .arch = .x86_64, .os = .macos, .abi = .none, .os_ver = .{ .major = 10, .minor = 7, .patch = 0 } },
      .{ .arch = .x86_64, .os = .netbsd, .abi = .none, .os_ver = .{ .major = 2, .minor = 0, .patch = 0 } },
-@@ -237,6 +240,23 @@ pub fn muslAbiNameHeaders(abi: std.Target.Abi) [:0]const u8 {
+@@ -264,6 +267,23 @@ pub fn muslAbiNameHeaders(abi: std.Target.Abi) [:0]const u8 {
      };
  }
  
@@ -159674,10 +159692,10 @@ index 0ac83c50dc57047ff1a937182b717960b14e8f82..4277915a640c2a38ada65edd1ec8ff8d
      return switch (arch) {
          .aarch64, .aarch64_be => "aarch64",
 diff --git a/zig/src/Compilation.zig b/zig/src/Compilation.zig
-index 684889f2d021ea78587078d62468c85e1e4a971d..c363968af1efb5fe10ea3f2d113de4104e9afcef 100644
+index 309ed5d32cd41f7da66f2b8f379ca7cbd5b568b2..54166562ab5d658a35b25f9194965fb2540fb0ee 100644
 --- a/zig/src/Compilation.zig
 +++ b/zig/src/Compilation.zig
-@@ -1324,6 +1324,8 @@ pub const MiscTask = enum {
+@@ -1227,6 +1227,8 @@ pub const MiscTask = enum {
      @"musl crt1.o",
      @"musl rcrt1.o",
      @"musl Scrt1.o",
@@ -159686,17 +159704,17 @@ index 684889f2d021ea78587078d62468c85e1e4a971d..c363968af1efb5fe10ea3f2d113de410
      @"musl libc.a",
      @"musl libc.so",
  
-@@ -2544,7 +2546,7 @@ pub fn create(gpa: Allocator, arena: Allocator, io: Io, diag: *CreateDiagnostic,
-                     }
-                     // Loads the libraries provided by `target_util.libcFullLinkFlags(target)`.
-                     comp.oneshot_prelink_tasks.appendAssumeCapacity(.load_host_libc);
+@@ -2459,7 +2461,7 @@ pub fn create(gpa: Allocator, arena: Allocator, io: Io, diag: *CreateDiagnostic,
+                         } },
+                     });
+                     // TODO delete logic from MachO flush() and queue up tasks here instead.
 -                } else if (target.isMuslLibC()) {
 +                } else if (target.isMuslLibC() or target.abi.isOpenHarmony()) {
                      if (!std.zig.target.canBuildLibC(target)) return diag.fail(.cross_libc_unavailable);
  
                      if (musl.needsCrt0(comp.config.output_mode, comp.config.link_mode, comp.config.pie)) |f| {
 diff --git a/zig/src/Compilation/Config.zig b/zig/src/Compilation/Config.zig
-index ce180f9ead8c4f545f4e5e8ea2a6ecc3c7b33179..fbdca4c5df869419399f328a8ce989816d7bc112 100644
+index 3691b1eb423b72130b0fd8e962137a08a1da1d61..f21a520dae2967230eaccab24fd71fc86c4b73a2 100644
 --- a/zig/src/Compilation/Config.zig
 +++ b/zig/src/Compilation/Config.zig
 @@ -255,7 +255,7 @@ pub fn resolve(options: Options) ResolveError!Config {
@@ -159719,20 +159737,37 @@ index ce180f9ead8c4f545f4e5e8ea2a6ecc3c7b33179..fbdca4c5df869419399f328a8ce98981
              // When targeting systems where the kernel and libc are developed alongside each other,
              // dynamic linking is the better default; static libc may contain code that requires
              // the very latest kernel version.
-@@ -454,7 +458,7 @@ pub fn resolve(options: Options) ResolveError!Config {
-     const pie = b: {
-         switch (options.output_mode) {
-             .Exe => if (target.os.tag == .fuchsia or
--                (target.abi.isAndroid() and link_mode == .dynamic))
-+                ((target.abi.isAndroid() or target.abi.isOpenHarmony()) and link_mode == .dynamic))
-             {
-                 if (options.pie == false) return error.TargetRequiresPie;
-                 break :b true;
+diff --git a/zig/src/codegen/llvm.zig b/zig/src/codegen/llvm.zig
+index a8adfba6fc0c39da8db4226231dfd50387a123ec..e6bb2844df570e667dec6ec52189e40bf650db7e 100644
+--- a/zig/src/codegen/llvm.zig
++++ b/zig/src/codegen/llvm.zig
+@@ -3122,6 +3122,9 @@ pub const Object = struct {
+         }
+ 
+         var it = iterateParamTypes(o, fn_info.cc, fn_info.param_types);
++        // Hidden parameters also consume registers in the C ABI. Keep signature
++        // lowering in sync with function bodies and call-site attributes.
++        it.llvm_index = @intCast(llvm_params.items.len);
+         while (try it.next()) |lowering| switch (lowering) {
+             .no_bits => continue,
+             .byval => {
+diff --git a/zig/src/codegen/llvm/FuncGen.zig b/zig/src/codegen/llvm/FuncGen.zig
+index 4a776752e8342365bf07ea87595083048aff0903..8e14ec02f590bf34a54062311c07770b8915c16e 100644
+--- a/zig/src/codegen/llvm/FuncGen.zig
++++ b/zig/src/codegen/llvm/FuncGen.zig
+@@ -823,6 +823,7 @@ fn buildCall(
+     }
+ 
+     var it = iterateParamTypes(o, fn_info.cc, fn_info.param_types);
++    it.llvm_index = @intCast(llvm_args.items.len);
+     while (try it.nextCall(arg_types)) |lowering| {
+         const arg_ty: Type = .fromInterned(arg_types[it.zig_index - 1]);
+         const arg_val = arg_values[it.zig_index - 1];
 diff --git a/zig/src/libs/libcxx.zig b/zig/src/libs/libcxx.zig
-index 3eb4161235382c9b63dab07edf88c27e74dc1a08..76a5d6a3920e56051f2b7006929d7e3d9cbabef9 100644
+index 88a92274188ff5294bf7c868027f49d3c9e5d40c..a5f986395457a743bb8687176936cc0a65beee31 100644
 --- a/zig/src/libs/libcxx.zig
 +++ b/zig/src/libs/libcxx.zig
-@@ -224,6 +224,12 @@ pub fn buildLibCxx(comp: *Compilation, prog_node: std.Progress.Node) BuildError!
+@@ -223,6 +223,12 @@ pub fn buildLibCxx(comp: *Compilation, prog_node: std.Progress.Node) BuildError!
  
          try cflags.append("-nostdinc++");
          try cflags.append("-std=c++23");
@@ -159745,7 +159780,7 @@ index 3eb4161235382c9b63dab07edf88c27e74dc1a08..76a5d6a3920e56051f2b7006929d7e3d
  
          // These depend on only the zig lib directory file path, which is
          // purposefully either in the cache or not in the cache. The decision
-@@ -420,6 +426,12 @@ pub fn buildLibCxxAbi(comp: *Compilation, prog_node: std.Progress.Node) BuildErr
+@@ -418,6 +424,12 @@ pub fn buildLibCxxAbi(comp: *Compilation, prog_node: std.Progress.Node) BuildErr
          try cflags.append("-nostdinc++");
          try cflags.append("-fstrict-aliasing");
          try cflags.append("-std=c++23");
@@ -159759,10 +159794,10 @@ index 3eb4161235382c9b63dab07edf88c27e74dc1a08..76a5d6a3920e56051f2b7006929d7e3d
          // These depend on only the zig lib directory file path, which is
          // purposefully either in the cache or not in the cache. The decision
 diff --git a/zig/src/libs/musl.zig b/zig/src/libs/musl.zig
-index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9181c6f74 100644
+index eca461940ce84ad1aa8d26dd406b6c4c3100dbb3..7c52bbce281c97ca50a7d13fbd1bb67d1b3f986d 100644
 --- a/zig/src/libs/musl.zig
 +++ b/zig/src/libs/musl.zig
-@@ -7,6 +7,7 @@ const Module = @import("../Package/Module.zig");
+@@ -7,6 +7,7 @@ const Module = @import("../Module.zig");
  
  const Compilation = @import("../Compilation.zig");
  const build_options = @import("build_options");
@@ -159790,9 +159825,9 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
              };
 +            try ensureOhosExtraCrtFiles(comp, arena, prog_node);
              return comp.build_crt_file("crt1", .Obj, .@"musl crt1.o", prog_node, &files, .{
-                 .omit_frame_pointer = true,
                  .no_builtin = true,
-@@ -50,16 +53,18 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
+             });
+@@ -49,16 +52,18 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
          .rcrt1_o => {
              var args = std.array_list.Managed([]const u8).init(arena);
              try addCcArgs(comp, arena, &args, false);
@@ -159812,9 +159847,9 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
              };
 +            try ensureOhosExtraCrtFiles(comp, arena, prog_node);
              return comp.build_crt_file("rcrt1", .Obj, .@"musl rcrt1.o", prog_node, &files, .{
-                 .omit_frame_pointer = true,
                  .pic = true,
-@@ -69,16 +74,18 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
+                 .no_builtin = true,
+@@ -67,16 +72,18 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
          .scrt1_o => {
              var args = std.array_list.Managed([]const u8).init(arena);
              try addCcArgs(comp, arena, &args, false);
@@ -159834,9 +159869,9 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
              };
 +            try ensureOhosExtraCrtFiles(comp, arena, prog_node);
              return comp.build_crt_file("Scrt1", .Obj, .@"musl Scrt1.o", prog_node, &files, .{
-                 .omit_frame_pointer = true,
                  .pic = true,
-@@ -107,10 +114,14 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
+                 .no_builtin = true,
+@@ -104,10 +111,14 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
                  }
              }
  
@@ -159853,7 +159888,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
              defer override_path.deinit();
  
              const s = path.sep_str;
-@@ -120,6 +131,10 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
+@@ -117,6 +128,10 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
                  const src_file = entry.key_ptr.*;
                  const ext = entry.value_ptr.*;
  
@@ -159864,7 +159899,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
                  const dirname = path.dirname(src_file).?;
                  const basename = path.basename(src_file);
                  const noextbasename = basename[0 .. basename.len - std.fs.path.extension(basename).len];
-@@ -158,9 +173,12 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
+@@ -155,9 +170,12 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
  
                  var args = std.array_list.Managed([]const u8).init(arena);
                  try addCcArgs(comp, arena, &args, ext == .o3);
@@ -159878,7 +159913,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
                      .extra_flags = args.items,
                      .owner = undefined,
                  };
-@@ -257,7 +275,7 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
+@@ -252,7 +270,7 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
                  .clang_passthrough_mode = comp.clang_passthrough_mode,
                  .c_source_files = &.{
                      .{
@@ -159887,7 +159922,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
                          .owner = root_mod,
                      },
                  },
-@@ -290,6 +308,56 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
+@@ -285,6 +303,54 @@ pub fn buildCrtFile(comp: *Compilation, in_crt_file: CrtFile, prog_node: std.Pro
      }
  }
  
@@ -159901,7 +159936,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
 +        var crti_args = std.array_list.Managed([]const u8).init(arena);
 +        try addCcArgs(comp, arena, &crti_args, false);
 +        try ohos.appendCrtCcArgs(target, &crti_args);
-+        try crti_args.append("-DCRT");
++        try crti_args.appendSlice(&.{ "-DCRT", "-fomit-frame-pointer" });
 +        const crti_rel = try std.fmt.allocPrint(arena, "musl/crt/{s}/crti.s", .{arch_name});
 +        var crti_files = [_]Compilation.CSourceFile{.{
 +            .src_path = try joinLibcSourcePath(comp, arena, crti_rel),
@@ -159909,7 +159944,6 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
 +            .owner = undefined,
 +        }};
 +        try comp.build_crt_file("crti", .Obj, .@"musl crti.o", prog_node, &crti_files, .{
-+            .omit_frame_pointer = true,
 +            .pic = true,
 +            .no_builtin = true,
 +        });
@@ -159919,7 +159953,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
 +        var crtn_args = std.array_list.Managed([]const u8).init(arena);
 +        try addCcArgs(comp, arena, &crtn_args, false);
 +        try ohos.appendCrtCcArgs(target, &crtn_args);
-+        try crtn_args.append("-DCRT");
++        try crtn_args.appendSlice(&.{ "-DCRT", "-fomit-frame-pointer" });
 +        const crtn_rel = try std.fmt.allocPrint(arena, "musl/crt/{s}/crtn.s", .{arch_name});
 +        var crtn_files = [_]Compilation.CSourceFile{
 +            .{
@@ -159934,7 +159968,6 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
 +            },
 +        };
 +        try comp.build_crt_file("crtn", .Obj, .@"musl crtn.o", prog_node, &crtn_files, .{
-+            .omit_frame_pointer = true,
 +            .pic = true,
 +            .no_builtin = true,
 +        });
@@ -159944,7 +159977,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
  pub fn needsCrt0(output_mode: std.lang.OutputMode, link_mode: std.lang.LinkMode, pie: bool) ?CrtFile {
      return switch (output_mode) {
          .Obj, .Lib => null,
-@@ -343,6 +411,17 @@ fn isArchName(name: []const u8) bool {
+@@ -338,6 +404,17 @@ fn isArchName(name: []const u8) bool {
      return false;
  }
  
@@ -159962,7 +159995,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
  const Ext = enum {
      assembly,
      o3,
-@@ -351,8 +430,10 @@ const Ext = enum {
+@@ -346,8 +423,10 @@ const Ext = enum {
  fn addSrcFile(arena: Allocator, source_table: *std.array_hash_map.String(Ext), file_path: []const u8) !void {
      const ext: Ext = ext: {
          if (mem.endsWith(u8, file_path, ".c")) {
@@ -159975,7 +160008,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
              {
                  break :ext .o3;
              } else {
-@@ -388,13 +469,26 @@ fn addCcArgs(
+@@ -383,13 +462,26 @@ fn addCcArgs(
      const target = comp.getTarget();
      const arch_name = std.zig.target.muslArchName(target.cpu.arch, target.abi);
      const os_name = @tagName(target.os.tag);
@@ -160004,7 +160037,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
      try args.appendSlice(&[_][]const u8{
          "-std=c99",
          "-ffreestanding",
-@@ -416,12 +510,21 @@ fn addCcArgs(
+@@ -411,12 +503,21 @@ fn addCcArgs(
  
          "-I",
          try comp.dirs.zig_lib.join(arena, &.{ "libc", "musl", "src", "internal" }),
@@ -160029,7 +160062,7 @@ index fcf179894c6d6f0d542f04fb925788c76f82ca1a..26ce958a73dd540a603dd1d31a8ab7a9
  
          "-I",
          try comp.dirs.zig_lib.join(arena, &.{ "libc", "include", "generic-musl" }),
-@@ -429,7 +532,7 @@ fn addCcArgs(
+@@ -424,7 +525,7 @@ fn addCcArgs(
          o_arg,
  
          "-Qunused-arguments",
@@ -160470,10 +160503,10 @@ index 0000000000000000000000000000000000000000..01fc3e1cef82733adace6ff0cbcad486
 +    "musl/src/math/tgammal.c",
 +};
 diff --git a/zig/src/main.zig b/zig/src/main.zig
-index 1c33a168f4ef7e0dae3608885f994eb49fe4cd82..c832f0b56a74d83f762301774f513e393672fea3 100644
+index 7d9d7e8ef506177405d5b2e1c859ad9afbc0d66d..d0977d7a20b28e99348b991ebc205c0dc36ee8f0 100644
 --- a/zig/src/main.zig
 +++ b/zig/src/main.zig
-@@ -1103,6 +1103,7 @@ fn buildOutputType(
+@@ -1120,6 +1120,7 @@ fn buildOutputType(
          .each_lib_rpath = null,
          .libc_paths_file = EnvVar.ZIG_LIBC.get(environ_map),
          .native_system_include_paths = &.{},
@@ -160481,15 +160514,15 @@ index 1c33a168f4ef7e0dae3608885f994eb49fe4cd82..c832f0b56a74d83f762301774f513e39
      };
      defer create_module.link_inputs.deinit(gpa);
  
-@@ -2157,6 +2158,7 @@ fn buildOutputType(
-                         mod_opts.unwind_tables = .sync;
+@@ -2211,6 +2212,7 @@ fn buildOutputType(
+                             };
                      },
                      .nostdlib => {
 +                        create_module.saw_nostdlib = true;
                          create_module.opts.ensure_libc_on_non_freestanding = false;
                          create_module.opts.ensure_libcpp_on_non_freestanding = false;
                          want_compiler_rt = false;
-@@ -3971,6 +3973,7 @@ const CreateModule = struct {
+@@ -4020,6 +4022,7 @@ const CreateModule = struct {
      rpath_list: std.ArrayList([]const u8),
      each_lib_rpath: ?bool,
      libc_paths_file: ?[]const u8,
@@ -160497,7 +160530,7 @@ index 1c33a168f4ef7e0dae3608885f994eb49fe4cd82..c832f0b56a74d83f762301774f513e39
  };
  
  fn createModule(
-@@ -4071,6 +4074,10 @@ fn createModule(
+@@ -4120,6 +4123,10 @@ fn createModule(
          create_module.opts.root_error_tracing = cli_mod.inherited.error_tracing;
          const target = &resolved_target.result;
  
@@ -160509,10 +160542,19 @@ index 1c33a168f4ef7e0dae3608885f994eb49fe4cd82..c832f0b56a74d83f762301774f513e39
          // We need to know whether the set of system libraries contains anything besides these
          // to decide whether to trigger native path detection logic.
 diff --git a/zig/src/target.zig b/zig/src/target.zig
-index 200591c68ebae9abba03633ec3ece7fbc88906bf..b1633a98d9608aa7647415f7a04f4dd0492ec4ae 100644
+index 6234c11a146b18c45b6b36ecf12138edebb99a5c..cb000676ace89ab0629652d2e02c47b7c7dea95e 100644
 --- a/zig/src/target.zig
 +++ b/zig/src/target.zig
-@@ -449,7 +449,7 @@ pub fn canBuildLibUbsanRt(target: *const std.Target) enum { no, yes, llvm_only,
+@@ -67,7 +67,7 @@ pub fn requiresPie(target: *const std.Target, link_mode: std.lang.LinkMode) bool
+         .fuchsia,
+         .@"switch",
+         => true,
+-        else => target.abi.isAndroid() and link_mode == .dynamic,
++        else => (target.abi.isAndroid() or target.abi.isOpenHarmony()) and link_mode == .dynamic,
+     };
+ }
+ 
+@@ -478,7 +478,7 @@ pub fn canBuildLibUbsanRt(target: *const std.Target) enum { no, yes, llvm_only,
  /// Whether libzigc can fill-in the gaps of an existing libc
  /// or *is* the libc of the target.
  pub fn wantsZigC(target: *const std.Target, link_mode: std.lang.LinkMode) bool {
@@ -160521,7 +160563,7 @@ index 200591c68ebae9abba03633ec3ece7fbc88906bf..b1633a98d9608aa7647415f7a04f4dd0
  }
  
  pub fn hasRedZone(target: *const std.Target) bool {
-@@ -928,7 +928,6 @@ pub inline fn backendSupportsFeature(backend: std.lang.CompilerBackend, comptime
+@@ -965,7 +965,6 @@ pub inline fn backendSupportsFeature(backend: std.lang.CompilerBackend, comptime
              .stage2_llvm,
              .stage2_x86_64,
              .stage2_riscv64,
@@ -160530,10 +160572,10 @@ index 200591c68ebae9abba03633ec3ece7fbc88906bf..b1633a98d9608aa7647415f7a04f4dd0
              else => false,
          },
 diff --git a/zig/stage1/config.zig.in b/zig/stage1/config.zig.in
-index 087585cd7eee9b1ea4bec29e8af50eb29fa64084..5e7861f9af03a90f8846ba36ff4edc3f85bb1c89 100644
+index d975f286a0fd52360326971d73f3b4a294169df1..3e82911484262ccdfa12e7c4c164359cf9dbdd12 100644
 --- a/zig/stage1/config.zig.in
 +++ b/zig/stage1/config.zig.in
-@@ -9,9 +9,13 @@ pub const enable_debug_extensions = false;
+@@ -9,8 +9,12 @@ pub const enable_debug_extensions = false;
  pub const enable_logging = false;
  pub const enable_link_snapshots = false;
  pub const enable_tracy = false;
@@ -160541,19 +160583,18 @@ index 087585cd7eee9b1ea4bec29e8af50eb29fa64084..5e7861f9af03a90f8846ba36ff4edc3f
 +pub const enable_tracy_allocation = false;
 +pub const tracy_callstack_depth: u32 = 0;
  pub const value_tracing = false;
- pub const skip_non_native = false;
  pub const debug_gpa = false;
 +pub const mem_leak_frames: u32 = 0;
  pub const dev = .core;
  pub const io_mode: enum { threaded, evented } = .threaded;
  pub const value_interpret_mode = .direct;
 diff --git a/zig/test/c_abi/cfuncs.c b/zig/test/c_abi/cfuncs.c
-index 302503ad4d839449c9aad546e712f3ebb6bdff3d..d2fc57bd85f3a499fbbbce2db8a9ddc68017e118 100644
+index 327bc04ceb34148541b994bb894f04bea85bf210..1d3af18d11cb5f390f7f4abc079007988e3b8026 100644
 --- a/zig/test/c_abi/cfuncs.c
 +++ b/zig/test/c_abi/cfuncs.c
-@@ -15562,6 +15562,30 @@ void c_long_double(long double x) {
-     assert_or_panic(x == 12.34l);
+@@ -16108,6 +16108,30 @@ void c_struct_i128(struct i128 x) {
  }
+ #endif
  
 +#if defined(__OHOS__) && defined(__x86_64__) && __LDBL_MANT_DIG__ == 113 && __SIZEOF_LONG_DOUBLE__ == 16
 +static const unsigned char ohos_x86_64_ld128_bytes[16] = {
@@ -160582,14 +160623,40 @@ index 302503ad4d839449c9aad546e712f3ebb6bdff3d..d2fc57bd85f3a499fbbbce2db8a9ddc6
  void c_ptr(void *x) {
      assert_or_panic(x == (void *)0xdeadbeefL);
  }
+@@ -16526,7 +16550,7 @@ f16_struct c_f16_struct(f16_struct a) {
+     return (f16_struct){34};
+ }
+ 
+-#if (defined __x86_64__ || defined __i386__) && !defined _MSC_VER
++#if (defined __x86_64__ || defined __i386__) && !defined _MSC_VER && __LDBL_MANT_DIG__ == 64
+ typedef long double f80;
+ f80 c_f80(f80 a) {
+     assert_or_panic((double)a == 12.34);
+@@ -16787,3 +16811,14 @@ void c_win64_varargs_f64_u64_f64_u64(double a, uint64_t b, double c, uint64_t d)
+     assert_or_panic(c == 7.0);
+     assert_or_panic(d == UINT64_C(0x4020000000000000));
+ }
++
++#if defined(__x86_64__) && !defined(_WIN32)
++typedef struct { uint64_t a, b; } SretPair;
++typedef struct { uint64_t a, b, c; } SretTriple;
++SretTriple zig_sysv_sret_four_pairs(SretPair, SretPair, SretPair, SretPair);
++SretTriple c_sysv_sret_four_pairs(SretPair a, SretPair b, SretPair c, SretPair d) {
++    const SretTriple result = zig_sysv_sret_four_pairs(a, b, c, d);
++    assert_or_panic(result.a == 16 && result.b == 20 && result.c == 9);
++    return result;
++}
++#endif
 diff --git a/zig/test/c_abi/main.zig b/zig/test/c_abi/main.zig
-index 1fd570b4ed40b6a50d2085c8d65a32fa941b36fc..10138217c261a42862231c0b8743a3123a2243ba 100644
+index a481a015117276e8abf7c4393f6d85cf60dd20fb..63f9e4d2b85bc32af2db6ce45b60c1bbf3adde71 100644
 --- a/zig/test/c_abi/main.zig
 +++ b/zig/test/c_abi/main.zig
-@@ -17,6 +17,16 @@ const have_i128 = builtin.cpu.arch != .x86 and !builtin.cpu.arch.isArm() and
+@@ -16,7 +16,17 @@ const have_i128 = builtin.cpu.arch != .x86 and !builtin.cpu.arch.isArm() and
+     builtin.cpu.arch != .s390x;
  
  const have_f128 = builtin.cpu.arch.isWasm() or (builtin.cpu.arch.isX86() and !builtin.os.tag.isDarwin() and builtin.abi != .msvc);
- const have_f80 = builtin.cpu.arch.isX86() and builtin.abi != .msvc;
+-const have_f80 = builtin.cpu.arch.isX86() and builtin.abi != .msvc;
++const have_f80 = builtin.cpu.arch.isX86() and @bitSizeOf(c_longdouble) == 80;
 +const has_ohos_x86_64_ld128_abi = builtin.abi == .ohos and builtin.cpu.arch == .x86_64;
 +const ohos_x86_64_ld128_bits: u128 = 0x4000923456789abcdef0011223344556;
 +
@@ -160603,17 +160670,18 @@ index 1fd570b4ed40b6a50d2085c8d65a32fa941b36fc..10138217c261a42862231c0b8743a312
  
  export fn zig_panic() noreturn {
      @panic("zig_panic called from C");
-@@ -107,6 +117,8 @@ export fn zig_struct_u128(a: U128) void {
- extern fn c_f32(f32) void;
- extern fn c_f64(f64) void;
- extern fn c_long_double(c_longdouble) void;
+@@ -104,6 +114,9 @@ export fn zig_struct_u128(a: U128) void {
+     expect(a.value == 0xfffffffffffffffc) catch @panic("test failure: zig_struct_u128");
+ }
+ 
 +extern fn c_ohos_x86_64_ld128_pattern() c_longdouble;
 +extern fn c_ohos_x86_64_ld128_expect(c_longdouble) void;
- 
++
  // On windows x64, the first 4 are passed via registers, others on the stack.
  extern fn c_five_floats(f32, f32, f32, f32, f32) void;
-@@ -131,6 +143,15 @@ test "long double" {
-     c_long_double(12.34);
+ 
+@@ -119,6 +132,15 @@ test "floats" {
+     c_five_floats(1.0, 2.0, 3.0, 4.0, 5.0);
  }
  
 +test "C ABI x86_64 OHOS 128-bit long double" {
@@ -160625,14 +160693,44 @@ index 1fd570b4ed40b6a50d2085c8d65a32fa941b36fc..10138217c261a42862231c0b8743a312
 +    c_ohos_x86_64_ld128_expect(@as(c_longdouble, @bitCast(ohos_x86_64_ld128_bits)));
 +}
 +
- export fn zig_f32(x: f32) void {
-     expect(x == 12.34) catch @panic("test failure: zig_f32");
+ extern fn c_ptr(*anyopaque) void;
+ 
+ test "pointer" {
+@@ -18048,6 +18070,29 @@ else switch (builtin.cpu.arch) {
+     else => null,
+ };
+ 
++const SretPair = extern struct { a: u64, b: u64 };
++const SretTriple = extern struct { a: u64, b: u64, c: u64 };
++
++export fn zig_sysv_sret_four_pairs(a: SretPair, b: SretPair, c: SretPair, d: SretPair) SretTriple {
++    return .{ .a = a.a + b.a + c.a + d.a, .b = a.b + b.b + c.b + d.b, .c = a.a + d.b };
++}
++
++test "sysv hidden sret pointer with register exhaustion" {
++    if (std.lang.CallingConvention.c != .x86_64_sysv) return error.SkipZigTest;
++    const funcs = struct {
++        extern fn c_sysv_sret_four_pairs(SretPair, SretPair, SretPair, SretPair) SretTriple;
++    };
++    const result = funcs.c_sysv_sret_four_pairs(
++        .{ .a = 1, .b = 2 },
++        .{ .a = 3, .b = 4 },
++        .{ .a = 5, .b = 6 },
++        .{ .a = 7, .b = 8 },
++    );
++    try expectEqual(@as(u64, 16), result.a);
++    try expectEqual(@as(u64, 20), result.b);
++    try expectEqual(@as(u64, 9), result.c);
++}
++
+ export fn zig_preserve_none(x: i32) callconv(preserve_none_cc orelse .c) i32 {
+     return x + 1;
  }
 diff --git a/zig/test/llvm_targets.zig b/zig/test/llvm_targets.zig
-index cbbf4aff7d01adeb6cfbd22a51402f35759b1ea4..853bcf19dd33d0f488578e12394c7ef2e95e5a03 100644
+index 38c5040e1d06ea158046c1db75711de4cf27e2b9..c2cc01d62b35ead1262fee9fb79c80fe472dac1e 100644
 --- a/zig/test/llvm_targets.zig
 +++ b/zig/test/llvm_targets.zig
-@@ -356,6 +356,13 @@ const targets = [_]std.Target.Query{
+@@ -359,6 +359,13 @@ const targets = [_]std.Target.Query{
      .{ .cpu_arch = .xtensa, .os_tag = .linux, .abi = .none },
  };
  
@@ -160646,7 +160744,7 @@ index cbbf4aff7d01adeb6cfbd22a51402f35759b1ea4..853bcf19dd33d0f488578e12394c7ef2
  pub fn addCases(
      ctx: *Cases,
      build_options: @import("cases.zig").BuildOptions,
-@@ -371,6 +378,6 @@ pub fn addCases(
+@@ -374,6 +381,6 @@ pub fn addCases(
              else => {},
          };
          var case = ctx.addObjLlvm("llvm_targets", b.resolveTargetQuery(target_query));
@@ -161367,10 +161465,10 @@ index 0000000000000000000000000000000000000000..ea4f3cdde095a83383ace925d34675eb
 +}
 diff --git a/zig/tools/process_headers_ohos.zig b/zig/tools/process_headers_ohos.zig
 new file mode 100644
-index 0000000000000000000000000000000000000000..16e5e3997a5d72544287edf554812a280daf2648
+index 0000000000000000000000000000000000000000..00b3ca8a58a0e27ed044f3e12326e5eb27c0c8fa
 --- /dev/null
 +++ b/zig/tools/process_headers_ohos.zig
-@@ -0,0 +1,501 @@
+@@ -0,0 +1,502 @@
 +//! Build the OHOS header overlay consumed by Zig's OHOS libc build path.
 +//!
 +//! Purpose:
@@ -161686,7 +161784,8 @@ index 0000000000000000000000000000000000000000..16e5e3997a5d72544287edf554812a28
 +                    const raw = try Io.Dir.cwd().readFileAlloc(io, src_path, allocator, .limited(max_size));
 +                    const replaced = try replaceBytes(allocator, raw, "\r\n", "\n");
 +                    const normalized = try stripUnneededOhosIncludes(allocator, replaced);
-+                    const content = std.mem.trimEnd(u8, normalized, "\r\n");
++                    const fixed = try replaceBytes(allocator, normalized, "__builtin_umull_overflow(a, b, result)", "__builtin_mul_overflow(a, b, result)");
++                    const content = std.mem.trimEnd(u8, fixed, "\r\n");
 +                    const with_newline = try std.mem.concat(allocator, u8, &[_][]const u8{ content, "\n" });
 +                    defer allocator.free(with_newline);
 +
@@ -161874,10 +161973,10 @@ index 0000000000000000000000000000000000000000..16e5e3997a5d72544287edf554812a28
 +}
 diff --git a/zig/tools/process_sources_ohos.zig b/zig/tools/process_sources_ohos.zig
 new file mode 100644
-index 0000000000000000000000000000000000000000..011721ec21b4849a0ccebae0d9d3b2f355f160c4
+index 0000000000000000000000000000000000000000..a578c144c8222543526d3b8e1d3de6ca72e1f1fa
 --- /dev/null
 +++ b/zig/tools/process_sources_ohos.zig
-@@ -0,0 +1,966 @@
+@@ -0,0 +1,975 @@
 +//! Build the `lib/libc/ohos` source overlay from an upstream OpenHarmony musl tree.
 +//!
 +//! Purpose:
@@ -162080,6 +162179,10 @@ index 0000000000000000000000000000000000000000..011721ec21b4849a0ccebae0d9d3b2f3
 +
 +    // Keep the generated overlay self-contained by applying the local fixes
 +    // that Zig expects today, instead of requiring a patched upstream tree.
++    if (std.mem.eql(u8, relative_path, "include/fortify/fortify.h")) {
++        try replaceOutput(allocator, &output, "__builtin_umull_overflow(a, b, result)", "__builtin_mul_overflow(a, b, result)");
++    }
++
 +    if (std.mem.eql(u8, relative_path, "src/time/gettimeofday.c")) {
 +        try replaceOutput(allocator, &output, "(int (*)(struct timval *, void *))p;", "(int (*)(struct timeval *, void *))p;");
 +    }
@@ -162089,6 +162192,11 @@ index 0000000000000000000000000000000000000000..011721ec21b4849a0ccebae0d9d3b2f3
 +    }
 +
 +    if (std.mem.eql(u8, relative_path, "src/network/lookup_name.c")) {
++        // Each anonymous struct is a distinct C type; use one const table type.
++        try replaceOutput(allocator, &output, "static const struct { int af; int rr; } afrr_ipv6_enable", "static const struct afrr { int af; int rr; } afrr_ipv6_enable");
++        try replaceOutput(allocator, &output, "static const struct { int af; int rr; } afrr_ipv4_only", "static const struct afrr afrr_ipv4_only");
++        try replaceOutput(allocator, &output, "static const struct { int af; int rr; } afrr_ipv6_only", "static const struct afrr afrr_ipv6_only");
++        try replaceOutput(allocator, &output, "struct {int af; int rr;} *afrr = afrr_ipv6_enable;", "const struct afrr *afrr = afrr_ipv6_enable;");
 +        try replaceOutput(allocator, &output, "static inline int get_hosts_str(char *line, int length, FILE *f, int *i)\n{\n\tif (f) {\n\t\tchar *ret = fgets(line, length, f);\n\t\tif (ret) {\n\t\t\tsize_t len = strlen(line);\n\t\t\tif (len > 0 && line[len - 1] != '\\n' && len < length - 1) {\n\t\t\t\tline[len] = '\\n';\n\t\t\t\tline[len + 1] = '\\0';\n\t\t\t}\n\t\t}\n\t\treturn ret;\n\t}\n\tif (*i < FIXED_HOSTS_MAX_LENGTH) {\n\t\tmemcpy(line, fixed_hosts[*i], strlen(fixed_hosts[*i]));\n\t\t(*i)++;\n\t\treturn 1;\n\t}\n\treturn NULL;\n}\n", "static inline char *get_hosts_str(char *line, int length, FILE *f, int *i)\n{\n\tif (f) {\n\t\tchar *ret = fgets(line, length, f);\n\t\tif (ret) {\n\t\t\tsize_t len = strlen(line);\n\t\t\tif (len > 0 && line[len - 1] != '\\n' && len < length - 1) {\n\t\t\t\tline[len] = '\\n';\n\t\t\t\tline[len + 1] = '\\0';\n\t\t\t}\n\t\t}\n\t\treturn ret;\n\t}\n\tif (*i < FIXED_HOSTS_MAX_LENGTH) {\n\t\tmemcpy(line, fixed_hosts[*i], strlen(fixed_hosts[*i]));\n\t\t(*i)++;\n\t\treturn line;\n\t}\n\treturn NULL;\n}\n");
 +    }
 +
