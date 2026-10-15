@@ -132,6 +132,22 @@ zig-bootstrap/scripts/ohos/check-source.sh \
 类型和 ARMv7 fortify 兼容修复、binary128 `long double` ABI 支持，以及
 LLVM 隐藏 sret 参数计数修复。升级编译器时应保留相应 C/Zig ABI 回归测试。
 
+OHOS 原生编译器通过 `PATH` 中的系统 `binary-sign-tool` 为最终 ELF
+可执行文件（包括 PIE）和共享库自签名。签名在链接器完成并关闭可写输出
+之后、whole-cache manifest 提交之前执行；签名失败不会记录成功缓存。
+缓存键区分 OHOS 原生构建与未签名的交叉构建，成功命中缓存时复用已签名
+ELF。对象文件和静态库不签名。错误诊断包含工具退出状态及其输出，成功时
+不显示工具日志。签名后恢复原文件权限，兼容工具替换输出文件的情况。
+命令遵循 [OpenHarmony 二进制签名工具接口](https://github.com/openharmony/developtools_hapsigner/blob/master/README_ZH.md)。
+即使原生默认目标根据 musl 解释器被检测为 `linux-musl`，也会执行签名。
+
+无需设备或签名密钥即可运行签名策略及进程调用回归：
+
+```sh
+python3 zig-bootstrap/scripts/ohos/test-signing.py \
+  --zig zig-bootstrap/out/zig-aarch64-macos-none-baseline/zig
+```
+
 ## 重新生成 libc 与头文件
 
 OHOS libc 是相对 Zig musl 的 overlay，OHOS 头文件由固定 SDK 生成。
@@ -216,7 +232,10 @@ scripts/test-qemu.sh \
 每个原生编译器执行 `version`、`env` 和客体内 Zig 编译、链接、运行检查，
 要求出现 `NATIVE_ZIG_OHOS_OK`。`--native-only` 为这些检查单独 clean-boot。
 HDC 直接传输编译器及 smoke 所需的精简库 tar，发布归档始终保留完整安装
-前缀。去掉 `--native-only` 可在同次启动中加入交叉编译的运行库 smoke。
+前缀。原生套件还要求 `OHOS_SIGNING_SMOKE_OK`：使用隔离的测试签名器检查
+最终 ELF 链接、共享库、`zig cc`、权限恢复、缓存命中和签名失败后的重试。
+这些检查验证编译器集成，真实签名应使用系统或 SDK 签名工具验签。
+去掉 `--native-only` 可在同次启动中加入交叉编译的运行库 smoke。
 仅检查编译和 ELF 元数据时执行：
 
 ```sh

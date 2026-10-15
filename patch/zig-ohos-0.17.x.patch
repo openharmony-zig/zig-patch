@@ -129,10 +129,10 @@ index 0000000000000000000000000000000000000000..fdd9d408ea8b87de7915aab10e06e537
 +    && rm -rf /var/lib/apt/lists/*
 diff --git a/ohos/README.md b/ohos/README.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..eec84c0625e0a1190c3c0b40f5c80575a0f0fd3d
+index 0000000000000000000000000000000000000000..8a761adf07df11d0429360091dd90c384f870107
 --- /dev/null
 +++ b/ohos/README.md
-@@ -0,0 +1,251 @@
+@@ -0,0 +1,264 @@
 +# Zig OpenHarmony 维护与发布
 +
 +本目录把仓库中的 OHOS 适配定义成一套可复现的源码维护、构建、打包和
@@ -149,6 +149,19 @@ index 0000000000000000000000000000000000000000..eec84c0625e0a1190c3c0b40f5c80575
 +LLVM 后端同时修正隐藏参数的寄存器计数，使 x86_64 soft-f80 compiler-rt
 +的结构体参数与函数签名、调用点保持一致；C ABI 测试覆盖返回值隐藏指针
 +导致参数寄存器耗尽的双向 Zig/C 调用。
++
++OHOS 原生 Zig 在最终 ELF 可执行文件和共享库链接完成后调用系统
++`binary-sign-tool sign -inFile <elf> -outFile <elf> -selfSign 1` 自签名。
++该工具必须位于 `PATH`，缺失或签名失败会导致构建失败；对象文件、静态库
++和其他宿主平台的交叉编译不触发签名。签名在提交成功缓存之前完成，并
++保留原文件权限。无需设备的回归检查：
++
++```sh
++python3 scripts/ohos/test-signing.py --zig out/host/bin/zig
++```
++
++原生 QEMU 套件同时通过隔离的测试签名器检查链接、`zig cc`、权限和缓存，
++要求 `OHOS_SIGNING_SMOKE_OK`。真实签名使用系统或 SDK 工具另行验签。
 +
 +## 支持矩阵
 +
@@ -598,10 +611,10 @@ index 0000000000000000000000000000000000000000..dc490a0143f799a2d8fbf8054cfd5039
 ++}
 diff --git a/ohos/source-paths.txt b/ohos/source-paths.txt
 new file mode 100644
-index 0000000000000000000000000000000000000000..4f9b2d1dec289ad773898591c8f76080a960c8f9
+index 0000000000000000000000000000000000000000..322f3f3809dcb32a8bdf6f7bb97199ee7de0566c
 --- /dev/null
 +++ b/ohos/source-paths.txt
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,40 @@
 +# Paths that form the reusable Zig/OpenHarmony source change.
 +# scripts/ohos/export-patch.sh passes this file to git pathspec handling.
 +.gitignore
@@ -630,6 +643,7 @@ index 0000000000000000000000000000000000000000..4f9b2d1dec289ad773898591c8f76080
 +zig/src/libs/musl.zig
 +zig/src/libs/libcxx.zig
 +zig/src/libs/ohos.zig
++zig/src/link/Ohos.zig
 +zig/src/main.zig
 +zig/src/target.zig
 +zig/stage1/config.zig.in
@@ -993,10 +1007,10 @@ index 0000000000000000000000000000000000000000..4f8f8877e2fa69927302c1b2f5deb48f
 +printf 'package: %s\nchecksum: %s\n' "${ARCHIVE}" "${ARCHIVE}.sha256"
 diff --git a/scripts/ohos/check-source.sh b/scripts/ohos/check-source.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..9fe7619a99672d5bea931778e5262c6bbca511ae
+index 0000000000000000000000000000000000000000..bb34ddc032297a9e6935e08b3ada3f80f80bf7f1
 --- /dev/null
 +++ b/scripts/ohos/check-source.sh
-@@ -0,0 +1,173 @@
+@@ -0,0 +1,179 @@
 +#!/usr/bin/env bash
 +set -euo pipefail
 +export LC_ALL=C
@@ -1069,6 +1083,7 @@ index 0000000000000000000000000000000000000000..9fe7619a99672d5bea931778e5262c6b
 +
 +required_paths=(
 +  zig/src/libs/ohos.zig
++  zig/src/link/Ohos.zig
 +  zig/tools/process_headers_ohos.zig
 +  zig/tools/process_sources_ohos.zig
 +  zig/lib/libc/musl/COPYRIGHT
@@ -1087,6 +1102,9 @@ index 0000000000000000000000000000000000000000..9fe7619a99672d5bea931778e5262c6b
 +  zig/test/ohos/native_zig_smoke.zig
 +  zig/test/ohos/dlopen_smoke.c
 +  scripts/ohos/compile-smoke.sh
++  scripts/ohos/test-signing.py
++  zig/test/ohos/signing_driver.zig
++  zig/test/ohos/signing_smoke.sh
 +  scripts/ohos/test-host-matrix.sh
 +  scripts/ohos/prepare-runtime-kit.sh
 +  scripts/ohos/test-windows-vm.sh
@@ -1163,6 +1181,8 @@ index 0000000000000000000000000000000000000000..9fe7619a99672d5bea931778e5262c6b
 +  done < <(jq -r '.native_zig_targets[] | [.zig_target, .cpu] | @tsv' "${MANIFEST}")
 +
 +  "${ZIG_BIN}" fmt --check \
++    "${ROOT}/zig/src/link/Ohos.zig" \
++    "${ROOT}/zig/test/ohos/signing_driver.zig" \
 +    "${ROOT}/zig/src/libs/ohos.zig" \
 +    "${ROOT}/zig/tools/process_headers_ohos.zig" \
 +    "${ROOT}/zig/tools/process_sources_ohos.zig" \
@@ -2210,10 +2230,10 @@ index 0000000000000000000000000000000000000000..e9640cb14651bffc82c0f383ba3d764f
 +cat "${RESULTS}"
 diff --git a/scripts/ohos/test-qemu.sh b/scripts/ohos/test-qemu.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..d79c71dc6ace096dc948880ccfa2d6068989b30a
+index 0000000000000000000000000000000000000000..2db80516ee5d51628f46d7af2d37b3688c96aa43
 --- /dev/null
 +++ b/scripts/ohos/test-qemu.sh
-@@ -0,0 +1,773 @@
+@@ -0,0 +1,778 @@
 +#!/usr/bin/env bash
 +set -euo pipefail
 +export LC_ALL=C
@@ -2830,6 +2850,9 @@ index 0000000000000000000000000000000000000000..d79c71dc6ace096dc948880ccfa2d606
 +  hdc_target file send \
 +    "${ROOT}/zig/test/ohos/native_zig_smoke.zig" \
 +    "${guest_dir}/native_zig_smoke.zig"
++  hdc_target file send \
++    "${ROOT}/zig/test/ohos/signing_smoke.sh" \
++    "${guest_dir}/signing_smoke.sh"
 +
 +  printf '\n===== native Zig compile/run (%s) =====\n' "${arch}" | tee -a "${run_log}"
 +  hdc_target_with_timeout "${NATIVE_HDC_COMMAND_TIMEOUT}" shell \
@@ -2843,9 +2866,11 @@ index 0000000000000000000000000000000000000000..d79c71dc6ace096dc948880ccfa2d606
 +       --cache-dir native-cache --global-cache-dir native-global \
 +       -femit-bin=native-zig-smoke.o && \
 +     native-zig/zig ld.lld -o native-zig-smoke -e _start -static \
-+       native-zig-smoke.o && chmod 755 native-zig-smoke && ./native-zig-smoke" \
++       native-zig-smoke.o && chmod 755 native-zig-smoke && ./native-zig-smoke && \
++     sh signing_smoke.sh" \
 +    2>&1 | tee -a "${run_log}"
 +  grep -q '^NATIVE_ZIG_OHOS_OK$' "${run_log}"
++  grep -q '^OHOS_SIGNING_SMOKE_OK$' "${run_log}"
 +  if ! qemu_alive || guest_fatal; then
 +    printf '%s\n' \
 +      "warning: guest became unhealthy after the required native ${arch} Zig marker was recorded" \
@@ -2987,6 +3012,107 @@ index 0000000000000000000000000000000000000000..d79c71dc6ace096dc948880ccfa2d606
 +
 +printf '\nOpenHarmony QEMU matrix passed:\n'
 +sed -n '1,20p' "${WORK}/results.tsv"
+diff --git a/scripts/ohos/test-signing.py b/scripts/ohos/test-signing.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..941b91f13e1bf02bc508340ba5ff0bff52f64ea0
+--- /dev/null
++++ b/scripts/ohos/test-signing.py
+@@ -0,0 +1,95 @@
++#!/usr/bin/env python3
++"""Exercise OHOS signing with a fake system signer; no device or signing key needed."""
++
++import argparse
++import json
++import os
++from pathlib import Path
++import stat
++import subprocess
++import sys
++import tempfile
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--zig", required=True, type=Path)
++    args = parser.parse_args()
++    root = Path(__file__).resolve().parents[2]
++    zig = args.zig.resolve()
++    tmp_root = Path(os.environ.get("OHOS_TMPDIR", root / "out" / "tmp"))
++    tmp_root.mkdir(parents=True, exist_ok=True)
++    with tempfile.TemporaryDirectory(prefix="signing-", dir=tmp_root) as tmp:
++        work = Path(tmp)
++        common = ["--zig-lib-dir", str(root / "zig/lib"),
++                  "--cache-dir", str(work / "cache"),
++                  "--global-cache-dir", str(work / "global")]
++        subprocess.run([str(zig), "test", str(root / "zig/src/link/Ohos.zig"), *common], check=True)
++        driver = work / "signing-driver"
++        subprocess.run([str(zig), "build-exe", *common, "--dep", "ohos_signing",
++                        f"-Mroot={root / 'zig/test/ohos/signing_driver.zig'}",
++                        f"-Mohos_signing={root / 'zig/src/link/Ohos.zig'}",
++                        f"-femit-bin={driver}"], check=True)
++        tools = work / "tools"
++        tools.mkdir()
++        trace = work / "trace.json"
++        signer = tools / "binary-sign-tool"
++        signer.write_text(f"#!{sys.executable}\n" + '''import json, os, pathlib, sys
++args = sys.argv[1:]
++pathlib.Path(os.environ["SIGN_TRACE"]).write_text(json.dumps(args))
++assert args[0] == "sign" and args[1] == "-inFile" and args[3] == "-outFile"
++assert args[2] == args[4] and args[5:] == ["-selfSign", "1"]
++path = pathlib.Path(args[2])
++replacement = path.with_name(path.name + ".signed")
++replacement.write_bytes(path.read_bytes() + b"SIGNED")
++replacement.chmod(0)
++replacement.replace(path)
++print("signer stdout", flush=True)
++print("signer stderr", file=sys.stderr, flush=True)
++if os.environ.get("SIGN_FAIL"):
++    sys.exit(23)
++if os.environ.get("SIGN_SIGNAL"):
++    import signal
++    os.kill(os.getpid(), signal.SIGTERM)
++if os.environ.get("SIGN_OVERFLOW"):
++    print("x" * (128 * 1024), flush=True)
++''')
++        signer.chmod(0o755)
++        env = dict(os.environ, PATH=str(tools), SIGN_TRACE=str(trace))
++        image = work / "hello 'quoted'; $(touch INJECTED).elf"
++
++        def invoke(extra_env=None):
++            image.write_bytes(b"\x7fELF")
++            image.chmod(0o751)
++            return subprocess.run([str(driver), str(image)], env=env | (extra_env or {}),
++                                  capture_output=True, text=True)
++
++        result = invoke()
++        assert result.returncode == 0, result.stderr
++        assert result.stdout == "" and result.stderr == "", result
++        assert image.read_bytes() == b"\x7fELFSIGNED"
++        assert stat.S_IMODE(image.stat().st_mode) == 0o751
++        assert json.loads(trace.read_text()) == ["sign", "-inFile", str(image),
++                                                "-outFile", str(image), "-selfSign", "1"]
++        assert not (Path.cwd() / "INJECTED").exists()
++
++        for case in ({"SIGN_FAIL": "1"}, {"SIGN_SIGNAL": "1"}):
++            result = invoke(case)
++            assert result.returncode != 0, result
++            assert "signer stdout" in result.stderr and "signer stderr" in result.stderr, result
++            assert stat.S_IMODE(image.stat().st_mode) == 0o751
++
++        result = invoke({"SIGN_OVERFLOW": "1"})
++        assert result.returncode != 0 and "StreamTooLong" in result.stderr, result
++        assert stat.S_IMODE(image.stat().st_mode) == 0o751
++
++        signer.unlink()
++        result = invoke()
++        assert result.returncode != 0 and "FileNotFound" in result.stderr, result
++        assert image.read_bytes() == b"\x7fELF"
++        assert stat.S_IMODE(image.stat().st_mode) == 0o751
++    print("OHOS signing policy, argv, permissions, failure and signal checks passed")
++
++
++if __name__ == "__main__":
++    main()
 diff --git a/scripts/ohos/test-windows-vm.sh b/scripts/ohos/test-windows-vm.sh
 new file mode 100755
 index 0000000000000000000000000000000000000000..49c9af5811a56d8476347f45f69827429b0ef8c6
@@ -159693,10 +159819,17 @@ index e70832bd47f5f2180bda7c41d828ddea8b1d477c..64a94d753b249bd3a52dff138593f07f
      return switch (arch) {
          .aarch64, .aarch64_be => "aarch64",
 diff --git a/zig/src/Compilation.zig b/zig/src/Compilation.zig
-index 309ed5d32cd41f7da66f2b8f379ca7cbd5b568b2..54166562ab5d658a35b25f9194965fb2540fb0ee 100644
+index 309ed5d32cd41f7da66f2b8f379ca7cbd5b568b2..3409cd08743472674e110f2dcf58438a46df0acc 100644
 --- a/zig/src/Compilation.zig
 +++ b/zig/src/Compilation.zig
-@@ -1227,6 +1227,8 @@ pub const MiscTask = enum {
+@@ -1221,12 +1221,15 @@ pub const MiscTask = enum {
+     compiler_rt,
+     libzigc,
+     link_depfile,
++    ohos_signing,
+     docs_copy,
+     docs_wasm,
+ 
      @"musl crt1.o",
      @"musl rcrt1.o",
      @"musl Scrt1.o",
@@ -159705,7 +159838,16 @@ index 309ed5d32cd41f7da66f2b8f379ca7cbd5b568b2..54166562ab5d658a35b25f9194965fb2
      @"musl libc.a",
      @"musl libc.so",
  
-@@ -2459,7 +2461,7 @@ pub fn create(gpa: Allocator, arena: Allocator, io: Io, diag: *CreateDiagnostic,
+@@ -1990,6 +1993,8 @@ pub fn create(gpa: Allocator, arena: Allocator, io: Io, diag: *CreateDiagnostic,
+         // This is shared hasher state common to zig source and all C source files.
+         cache.hash.addBytes(build_options.version);
+         cache.hash.add(builtin.zig_backend);
++        // Cross-compiled OHOS ELFs are unsigned; native builds self-sign them.
++        cache.hash.add(builtin.abi.isOpenHarmony());
+         cache.hash.add(options.config.pie);
+         cache.hash.add(options.config.lto);
+         cache.hash.add(options.config.link_mode);
+@@ -2459,7 +2464,7 @@ pub fn create(gpa: Allocator, arena: Allocator, io: Io, diag: *CreateDiagnostic,
                          } },
                      });
                      // TODO delete logic from MachO flush() and queue up tasks here instead.
@@ -159714,6 +159856,36 @@ index 309ed5d32cd41f7da66f2b8f379ca7cbd5b568b2..54166562ab5d658a35b25f9194965fb2
                      if (!std.zig.target.canBuildLibC(target)) return diag.fail(.cross_libc_unavailable);
  
                      if (musl.needsCrt0(comp.config.output_mode, comp.config.link_mode, comp.config.pie)) |f| {
+@@ -3294,6 +3299,29 @@ fn flush(comp: *Compilation, arena: Allocator) (Io.Cancelable || Allocator.Error
+             error.Canceled, error.OutOfMemory => |e| return e,
+             error.AlreadyReported => return,
+         };
++        const ohos = @import("link/Ohos.zig");
++        if (builtin.abi.isOpenHarmony() and dev.env.supports(.make_executable) and
++            ohos.shouldSign(builtin.abi, comp.getTarget(), comp.config.output_mode, comp.config.link_mode) and
++            !comp.link_diags.hasErrors())
++        {
++            // Sign the completed ELF before publishing the cache manifest. Closing
++            // the linker also unmaps ELF2's output, which the signer may replace.
++            lf.makeExecutable() catch |err| {
++                return comp.setMiscFailure(.ohos_signing, "failed to close ELF before OHOS signing: {t}", .{err});
++            };
++            const path = try lf.emit.toString(arena);
++            const result = ohos.sign(arena, io, path) catch |err| switch (err) {
++                error.Canceled, error.OutOfMemory => |e| return e,
++                else => return comp.setMiscFailure(.ohos_signing, "failed to self-sign OHOS ELF '{s}' with binary-sign-tool: {t}", .{ path, err }),
++            };
++            switch (result.term) {
++                .exited => |code| if (code == 0) return,
++                else => {},
++            }
++            return comp.setMiscFailure(.ohos_signing, "binary-sign-tool {f} while signing OHOS ELF '{s}'\n{s}{s}", .{
++                result.term, path, result.stdout, result.stderr,
++            });
++        }
+     }
+ }
+ 
 diff --git a/zig/src/Compilation/Config.zig b/zig/src/Compilation/Config.zig
 index 3691b1eb423b72130b0fd8e962137a08a1da1d61..f21a520dae2967230eaccab24fd71fc86c4b73a2 100644
 --- a/zig/src/Compilation/Config.zig
@@ -160503,6 +160675,74 @@ index 0000000000000000000000000000000000000000..01fc3e1cef82733adace6ff0cbcad486
 +    "musl/src/math/tanhl.c",
 +    "musl/src/math/tgammal.c",
 +};
+diff --git a/zig/src/link/Ohos.zig b/zig/src/link/Ohos.zig
+new file mode 100644
+index 0000000000000000000000000000000000000000..a8833559ef6c93e9df9ed5f8601c2d05801aee91
+--- /dev/null
++++ b/zig/src/link/Ohos.zig
+@@ -0,0 +1,62 @@
++const std = @import("std");
++
++/// Self signatures are made by the OHOS host on which the ELF will be used.
++pub fn shouldSign(
++    host_abi: std.Target.Abi,
++    target: *const std.Target,
++    output_mode: std.lang.OutputMode,
++    link_mode: std.lang.LinkMode,
++) bool {
++    // Native target detection can report musl for OHOS's musl interpreter.
++    // The host's code-signing requirement applies to ELF images either way.
++    return host_abi.isOpenHarmony() and target.ofmt == .elf and switch (output_mode) {
++        .Exe => true,
++        .Lib => link_mode == .dynamic,
++        .Obj => false,
++    };
++}
++
++/// The caller must flush and close the linker's writable handles first.
++/// The caller owns the returned stdout and stderr allocations.
++pub fn sign(gpa: std.mem.Allocator, io: std.Io, path: []const u8) !std.process.RunResult {
++    const cwd: std.Io.Dir = .cwd();
++    const permissions = (try cwd.statFile(io, path, .{})).permissions;
++    errdefer cwd.setFilePermissions(io, path, permissions, .{}) catch {};
++    const result = try std.process.run(gpa, io, .{
++        .argv = &.{ "binary-sign-tool", "sign", "-inFile", path, "-outFile", path, "-selfSign", "1" },
++        .stdout_limit = .limited(64 * 1024),
++        .stderr_limit = .limited(64 * 1024),
++    });
++    errdefer {
++        gpa.free(result.stdout);
++        gpa.free(result.stderr);
++    }
++    // The signer may replace the file, losing its original executable bits.
++    try cwd.setFilePermissions(io, path, permissions, .{});
++    return result;
++}
++
++test "only final ELF images on an OHOS host require signing" {
++    const builtin = @import("builtin");
++    var target = builtin.target;
++    target.os.tag = .linux;
++    target.ofmt = .elf;
++    for ([_]std.Target.Abi{ .ohos, .ohoseabi }) |abi| {
++        target.abi = abi;
++        for ([_]std.Target.Abi{ .ohos, .ohoseabi }) |host_abi| {
++            try std.testing.expect(shouldSign(host_abi, &target, .Exe, .static));
++            try std.testing.expect(shouldSign(host_abi, &target, .Exe, .dynamic));
++            try std.testing.expect(shouldSign(host_abi, &target, .Lib, .dynamic));
++            try std.testing.expect(!shouldSign(host_abi, &target, .Lib, .static));
++            try std.testing.expect(!shouldSign(host_abi, &target, .Obj, .static));
++        }
++        for ([_]std.Target.Abi{ .none, .gnu, .musl, .android }) |host_abi| {
++            try std.testing.expect(!shouldSign(host_abi, &target, .Exe, .dynamic));
++        }
++    }
++    target.abi = .musl;
++    try std.testing.expect(shouldSign(.ohos, &target, .Exe, .dynamic));
++    target.abi = .ohos;
++    target.ofmt = .c;
++    try std.testing.expect(!shouldSign(.ohos, &target, .Exe, .static));
++}
 diff --git a/zig/src/main.zig b/zig/src/main.zig
 index 7d9d7e8ef506177405d5b2e1c859ad9afbc0d66d..d0977d7a20b28e99348b991ebc205c0dc36ee8f0 100644
 --- a/zig/src/main.zig
@@ -161081,7 +161321,7 @@ index 0000000000000000000000000000000000000000..f5ed1edb36f815a938a4eb0d72738b8c
 +}
 diff --git a/zig/test/ohos/native_zig_smoke.zig b/zig/test/ohos/native_zig_smoke.zig
 new file mode 100644
-index 0000000000000000000000000000000000000000..e7cdf1c9703549cfe684846bc12ff547b2161ca8
+index 0000000000000000000000000000000000000000..858192db8c39411a2412c847cfa8d655140af862
 --- /dev/null
 +++ b/zig/test/ohos/native_zig_smoke.zig
 @@ -0,0 +1,64 @@
@@ -161139,7 +161379,7 @@ index 0000000000000000000000000000000000000000..e7cdf1c9703549cfe684846bc12ff547
 +    unreachable;
 +}
 +
-+export fn _start() callconv(.c) noreturn {
++pub export fn _start() callconv(.c) noreturn {
 +    writeMarker();
 +    exitSuccess();
 +}
@@ -161464,6 +161704,130 @@ index 0000000000000000000000000000000000000000..ea4f3cdde095a83383ace925d34675eb
 +export fn zig_ohos_shared_abi() u32 {
 +    return 0x4f484f53;
 +}
+diff --git a/zig/test/ohos/signing_driver.zig b/zig/test/ohos/signing_driver.zig
+new file mode 100644
+index 0000000000000000000000000000000000000000..bf935d1a07708f0f20077549c185e5de1fbda62f
+--- /dev/null
++++ b/zig/test/ohos/signing_driver.zig
+@@ -0,0 +1,16 @@
++//! Invokes the same signing helper as Compilation.flush for host-side regression tests.
++const std = @import("std");
++const signing = @import("ohos_signing");
++
++pub fn main(init: std.process.Init) !void {
++    const arena = init.arena.allocator();
++    const args = try init.minimal.args.toSlice(arena);
++    if (args.len != 2) return error.ExpectedElfPath;
++    const result = try signing.sign(arena, init.io, args[1]);
++    switch (result.term) {
++        .exited => |code| if (code == 0) return,
++        else => {},
++    }
++    std.debug.print("binary-sign-tool {f}\n{s}{s}", .{ result.term, result.stdout, result.stderr });
++    return error.SigningFailed;
++}
+diff --git a/zig/test/ohos/signing_smoke.sh b/zig/test/ohos/signing_smoke.sh
+new file mode 100644
+index 0000000000000000000000000000000000000000..6e5887b07c86c1abc67d8f3fb74790caf691c1cf
+--- /dev/null
++++ b/zig/test/ohos/signing_smoke.sh
+@@ -0,0 +1,96 @@
++#!/bin/sh
++# Run inside an OHOS guest with a native Zig and native_zig_smoke.zig in cwd.
++# The fake signer verifies invocation and permission restoration, not cryptography.
++set -eu
++
++zig="$(pwd)/native-zig/zig"
++work="$(pwd)/signing-smoke"
++mkdir -p "${work}/bin"
++export SIGN_TRACE="${work}/calls"
++: >"${SIGN_TRACE}"
++cat >"${work}/bin/binary-sign-tool" <<'SIGNER'
++#!/bin/sh
++set -eu
++[ "$#" -eq 7 ]
++[ "$1" = sign ] && [ "$2" = -inFile ] && [ "$4" = -outFile ]
++[ "$3" = "$5" ] && [ "$6" = -selfSign ] && [ "$7" = 1 ]
++printf '%s\n' "$3" >>"${SIGN_TRACE}"
++chmod 000 "$3"
++if [ "${SIGN_FAIL:-0}" != 0 ]; then
++    echo 'OHOS_SIGN_FAILURE' >&2
++    exit 23
++fi
++SIGNER
++chmod 755 "${work}/bin/binary-sign-tool"
++export PATH="${work}/bin:${PATH}"
++
++expect_calls() { [ "$(wc -l <"${SIGN_TRACE}")" -eq "$1" ]; }
++
++# Both the self-hosted linker and LLD must sign the final executable.
++"${zig}" build-exe native-zig-smoke.o -OReleaseFast -fno-compiler-rt \
++    -fno-lld -fno-new-linker -femit-bin="${work}/self hosted.elf"
++expect_calls 1
++[ -x "${work}/self hosted.elf" ]
++"${work}/self hosted.elf"
++"${zig}" build-exe native-zig-smoke.o -OReleaseFast -fno-compiler-rt \
++    -flld -femit-bin="${work}/lld.elf"
++expect_calls 2
++"${work}/lld.elf"
++
++cat >"${work}/library.zig" <<'ZIG'
++export fn answer() u32 { return 42; }
++ZIG
++"${zig}" build-lib "${work}/library.zig" -dynamic -OReleaseFast \
++    -fno-compiler-rt -flld -femit-bin="${work}/libsmoke.so"
++expect_calls 3
++"${zig}" build-obj "${work}/library.zig" -OReleaseFast \
++    -fno-compiler-rt -femit-bin="${work}/library.o"
++"${zig}" build-lib "${work}/library.zig" -OReleaseFast \
++    -fno-compiler-rt -femit-bin="${work}/libsmoke.a"
++expect_calls 3
++
++# Failed signatures must fail the compilation and report the tool's output.
++if SIGN_FAIL=1 "${zig}" build-exe native-zig-smoke.o -OReleaseFast \
++    -fno-compiler-rt -flld -femit-bin="${work}/failure.elf" >"${work}/failure.log" 2>&1; then
++    echo 'expected signing failure' >&2
++    exit 1
++fi
++expect_calls 4
++grep -q 'OHOS_SIGN_FAILURE' "${work}/failure.log"
++grep -q 'exited with code 23' "${work}/failure.log"
++"${zig}" build-exe native-zig-smoke.o -OReleaseFast -fno-compiler-rt \
++    -flld -femit-bin="${work}/failure.elf"
++expect_calls 5
++"${work}/failure.elf"
++
++# zig cc uses the same final-link signing path.
++echo 'int answer(void) { return 42; }' >"${work}/library.c"
++"${zig}" cc -shared -nostdlib "${work}/library.c" -o "${work}/libcc.so"
++expect_calls 6
++
++mkdir -p "${work}/empty"
++if PATH="${work}/empty" "${zig}" build-exe native-zig-smoke.o -OReleaseFast \
++    -fno-compiler-rt -flld -femit-bin="${work}/missing.elf" >"${work}/missing.log" 2>&1; then
++    echo 'expected missing signing tool to fail' >&2
++    exit 1
++fi
++expect_calls 6
++grep -q 'binary-sign-tool: FileNotFound' "${work}/missing.log"
++
++# zig run uses the whole cache. A successful hit reuses its signed ELF, while
++# a failed signature must be retried on the next invocation of the same input.
++"${zig}" run native_zig_smoke.zig -OReleaseFast -fno-compiler-rt -fllvm -flld
++expect_calls 7
++"${zig}" run native_zig_smoke.zig -OReleaseFast -fno-compiler-rt -fllvm -flld
++expect_calls 7
++if SIGN_FAIL=1 "${zig}" run native_zig_smoke.zig --name signing-failure-cache \
++    -OReleaseFast -fno-compiler-rt -fllvm -flld >"${work}/cache-failure.log" 2>&1; then
++    echo 'expected cached signing failure' >&2
++    exit 1
++fi
++expect_calls 8
++"${zig}" run native_zig_smoke.zig --name signing-failure-cache \
++    -OReleaseFast -fno-compiler-rt -fllvm -flld
++expect_calls 9
++
++echo OHOS_SIGNING_SMOKE_OK
 diff --git a/zig/tools/process_headers_ohos.zig b/zig/tools/process_headers_ohos.zig
 new file mode 100644
 index 0000000000000000000000000000000000000000..00b3ca8a58a0e27ed044f3e12326e5eb27c0c8fa
