@@ -55,6 +55,13 @@ zig c++ main.cpp -target aarch64-linux-ohos -o hello-cxx-ohos
 ARMv7 使用 `arm-linux-ohoseabi -mcpu=generic+v7a`，x86_64 使用
 `x86_64-linux-ohos`。生成的程序应在对应架构的 OHOS 设备或系统镜像中运行。
 
+在 OHOS 上原生运行 Zig 时，最终生成的 ELF 可执行文件和共享库会在
+链接后自动调用系统命令
+`binary-sign-tool sign -inFile <elf> -outFile <elf> -selfSign 1` 自签名。
+请将该工具安装到 `PATH`；工具缺失或签名失败会使构建失败。对象文件、
+静态库，以及从其他宿主平台进行的交叉编译不会触发签名。签名后保留原有
+文件权限。
+
 ## 构建与贡献
 
 从全新源码构建、维护补丁、整理发布附件和执行 QEMU 测试，请参阅

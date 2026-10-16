@@ -142,6 +142,26 @@ OHOS DNS table types and ARMv7 fortify compatibility, binary128 `long double`
 ABI support, and LLVM hidden sret parameter accounting. Keep the relevant C/Zig
 ABI regressions when updating the compiler.
 
+Native OHOS compilers self-sign final ELF executables (including PIE) and
+shared libraries with the system `binary-sign-tool` from `PATH`. Signing runs
+after either linker backend has finished and closed its writable output, before
+the whole-cache manifest is committed. A signing failure prevents a successful
+cache entry. The cache key distinguishes native OHOS builds from unsigned cross
+builds. Successful cache hits reuse the signed ELF. Relocatable objects and
+static archives are excluded. Signature diagnostics include the tool's exit
+status and captured output; its output is suppressed on success. File permissions
+are restored after signing, including when the tool replaces the file. The command
+follows the [OpenHarmony binary signing tool interface](https://github.com/openharmony/developtools_hapsigner/blob/master/README_ZH.md).
+This also covers the native default target when its musl interpreter is detected
+as `linux-musl`, rather than an explicit `linux-ohos` target.
+
+Run the signing policy and process regressions without a device or signing key:
+
+```sh
+python3 zig-bootstrap/scripts/ohos/test-signing.py \
+  --zig zig-bootstrap/out/zig-aarch64-macos-none-baseline/zig
+```
+
 ## Regenerate libc and headers
 
 The OHOS libc sources are an overlay against Zig's musl, and OHOS headers are
@@ -231,6 +251,10 @@ Each native compiler runs `version`, `env`, and an in-guest Zig compile/link/run
 check requiring `NATIVE_ZIG_OHOS_OK`. `--native-only` uses separate clean boots
 for these checks. HDC transfers the compiler directly and a reduced library tar
 for the smoke test; release archives always contain the full installed prefix.
+The native suite also requires `OHOS_SIGNING_SMOKE_OK`: an isolated test signer
+checks final ELF links, shared libraries, `zig cc`, permissions, cache hits and
+retry after a signing failure. This checks compiler integration; use the real
+system or SDK signing tool to verify cryptographic signatures.
 Omit `--native-only` to include cross-compiled runtime smoke tests in the same
 boot. To check compilation and ELF metadata without guests:
 
