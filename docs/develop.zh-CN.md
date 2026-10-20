@@ -132,14 +132,18 @@ zig-bootstrap/scripts/ohos/check-source.sh \
 类型和 ARMv7 fortify 兼容修复、binary128 `long double` ABI 支持，以及
 LLVM 隐藏 sret 参数计数修复。升级编译器时应保留相应 C/Zig ABI 回归测试。
 
-OHOS 原生编译器通过 `PATH` 中的系统 `binary-sign-tool` 为最终 ELF
+OHOS 原生编译器通过 `PATH` 中的系统 `binary-sign-tool` 为 OHOS 目标的最终 ELF
 可执行文件（包括 PIE）和共享库自签名。签名在链接器完成并关闭可写输出
 之后、whole-cache manifest 提交之前执行；签名失败不会记录成功缓存。
 缓存键区分 OHOS 原生构建与未签名的交叉构建，成功命中缓存时复用已签名
 ELF。对象文件和静态库不签名。错误诊断包含工具退出状态及其输出，成功时
 不显示工具日志。签名后恢复原文件权限，兼容工具替换输出文件的情况。
 命令遵循 [OpenHarmony 二进制签名工具接口](https://github.com/openharmony/developtools_hapsigner/blob/master/README_ZH.md)。
-即使原生默认目标根据 musl 解释器被检测为 `linux-musl`，也会执行签名。
+原生目标检测保留 `ohos`/`ohoseabi` ABI，避免相同的动态链接器名称导致误识别
+为 musl。显式指定的 GNU、musl、Android 目标保持不变，不触发签名。QEMU
+回归覆盖默认/显式 OHOS 目标签名及其他平台 ELF 交叉产物不签名。
+`zig cc -nostdlib` 显式关闭 libc 链接，避免 OHOS ABI 的默认 libc 要求
+使无运行库链接仍隐式构建 libc。
 
 无需设备或签名密钥即可运行签名策略及进程调用回归：
 
