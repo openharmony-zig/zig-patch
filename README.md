@@ -61,11 +61,11 @@ Use `arm-linux-ohoseabi -mcpu=generic+v7a` for ARMv7 or
 OHOS device or system image.
 
 When Zig runs natively on OHOS, final ELF executables and shared libraries
-are self-signed automatically after linking with the system command
+for OHOS targets are self-signed automatically after linking with the system command
 `binary-sign-tool sign -inFile <elf> -outFile <elf> -selfSign 1`. Install that
 tool on `PATH`; a missing tool or failed signature fails the build. Object files,
-static libraries, and cross compilation from other host platforms do not invoke
-the signer. The original file permissions are preserved.
+static libraries, outputs for non-OHOS targets, and cross compilation from other
+host platforms do not invoke the signer. The original file permissions are preserved.
 
 ## Build and contribute
 

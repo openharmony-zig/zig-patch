@@ -143,7 +143,7 @@ ABI support, and LLVM hidden sret parameter accounting. Keep the relevant C/Zig
 ABI regressions when updating the compiler.
 
 Native OHOS compilers self-sign final ELF executables (including PIE) and
-shared libraries with the system `binary-sign-tool` from `PATH`. Signing runs
+shared libraries for OHOS targets with the system `binary-sign-tool` from `PATH`. Signing runs
 after either linker backend has finished and closed its writable output, before
 the whole-cache manifest is committed. A signing failure prevents a successful
 cache entry. The cache key distinguishes native OHOS builds from unsigned cross
@@ -152,8 +152,12 @@ static archives are excluded. Signature diagnostics include the tool's exit
 status and captured output; its output is suppressed on success. File permissions
 are restored after signing, including when the tool replaces the file. The command
 follows the [OpenHarmony binary signing tool interface](https://github.com/openharmony/developtools_hapsigner/blob/master/README_ZH.md).
-This also covers the native default target when its musl interpreter is detected
-as `linux-musl`, rather than an explicit `linux-ohos` target.
+Native target detection preserves `ohos`/`ohoseabi` even though OHOS shares
+interpreter names with musl. Explicit GNU, musl and Android targets remain
+unchanged and do not invoke the signer. Native QEMU regressions verify both
+default/explicit OHOS signing and unsigned cross-platform ELF outputs.
+`zig cc -nostdlib` explicitly disables automatic libc linkage, including for
+OHOS ABIs that otherwise link libc by default.
 
 Run the signing policy and process regressions without a device or signing key:
 
