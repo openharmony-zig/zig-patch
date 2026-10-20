@@ -161882,10 +161882,10 @@ index 0000000000000000000000000000000000000000..f008f1df77d4f478ba32c45ea9d8705b
 +echo OHOS_SIGNING_SMOKE_OK
 diff --git a/zig/test/ohos/signing_target_smoke.sh b/zig/test/ohos/signing_target_smoke.sh
 new file mode 100644
-index 0000000000000000000000000000000000000000..539874adfacc29a0c941259fcf8c0dd39ed44375
+index 0000000000000000000000000000000000000000..048fe06a1f07477f69afcad65c876123b45e94a9
 --- /dev/null
 +++ b/zig/test/ohos/signing_target_smoke.sh
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,54 @@
 +#!/bin/sh
 +# Run in an OHOS guest after preparing native-zig and native-zig-smoke.o.
 +set -eu
@@ -161929,8 +161929,12 @@ index 0000000000000000000000000000000000000000..539874adfacc29a0c941259fcf8c0dd3
 +
 +# A signer that fails must not affect ELF outputs for other platforms.
 +for abi in "${musl}" "${gnu}" android; do
++    case "${arch}-${abi}" in
++        arm-android) set -- -mfloat-abi=softfp ;;
++        *) set -- ;;
++    esac
 +    SIGN_FAIL=1 "${zig}" cc -shared -nostdlib "${work}/library.c" \
-+        -target "${arch}-linux-${abi}" -o "${work}/${abi}.so"
++        -target "${arch}-linux-${abi}" "$@" -o "${work}/${abi}.so"
 +    expect_calls 2
 +done
 +SIGN_FAIL=1 "${zig}" cc -c "${work}/library.c" -o "${work}/native.o"
